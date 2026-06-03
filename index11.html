@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>이서린 PT 대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<!-- React / ReactDOM / PapaParse / Babel (모두 cdnjs) -->
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+
+<style>
+  :root {
+    --bg:#F4F1EA; --surface:#FFFFFF; --ink:#211D18; --muted:#807769;
+    --line:#E7E1D6; --primary:#226452; --primarySoft:#E4EFEA;
+    --accent:#CF6646; --accentSoft:#F8E7E0;
+    --serif:'Fraunces',Georgia,serif; --sans:'Spline Sans',system-ui,sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:var(--bg); }
+  body { font-family:var(--sans); color:var(--ink); }
+  input, select, textarea { font-family:var(--sans); }
+  .pt-input { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:13px; outline:none; }
+  .pt-input:focus { border-color:var(--primary); }
+  #loading { display:flex; align-items:center; justify-content:center; height:100vh; color:var(--muted); font-size:14px; }
+
+  /* --- 레이아웃 유틸 (Tailwind 대체, 내장) --- */
+  .mx-auto{margin-left:auto;margin-right:auto}
+  .flex{display:flex}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}
+  .items-center{align-items:center}.justify-between{justify-content:space-between}.justify-center{justify-content:center}
+  .text-right{text-align:right}
+  .grid{display:grid}
+  .grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}
+  .grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .gap-1{gap:4px}.gap-2{gap:8px}.gap-3{gap:12px}.gap-4{gap:16px}.gap-5{gap:20px}
+  @media (min-width:768px){
+    .md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .md\:grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .md\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .md\:col-span-2{grid-column:span 2 / span 2}
+  }
+</style>
+</head>
+<body>
+<div id="root"><div id="loading">불러오는 중…</div></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useRef, useEffect } = React;
+
+/* ----------------------------- 테마 토큰 ----------------------------- */
+const T = {
+  bg:"#F4F1EA", surface:"#FFFFFF", ink:"#211D18", muted:"#807769",
+  line:"#E7E1D6", primary:"#226452", primarySoft:"#E4EFEA",
+  accent:"#CF6646", accentSoft:"#F8E7E0", gold:"#BC8C3C",
+  serif:"'Fraunces', Georgia, serif", sans:"'Spline Sans', system-ui, sans-serif",
+};
+
+/* ----------------------- 인라인 아이콘 ----------------------- */
+function IconBase({ size = 16, fill = "none", children }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill}
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{children}</svg>
+  );
+}
+const I = {
+  dashboard: (p) => <IconBase {...p}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></IconBase>,
+  health: (p) => <IconBase {...p}><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></IconBase>,
+  activity: (p) => <IconBase {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></IconBase>,
+  dumbbell: (p) => <IconBase {...p}><path d="M2 12h2M20 12h2M7 12h10"/><rect x="4" y="9" width="3" height="6" rx="1"/><rect x="17" y="9" width="3" height="6" rx="1"/></IconBase>,
+  list: (p) => <IconBase {...p}><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></IconBase>,
+  database: (p) => <IconBase {...p}><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></IconBase>,
+  download: (p) => <IconBase {...p}><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></IconBase>,
+  upload: (p) => <IconBase {...p}><path d="M12 21V9M7 14l5-5 5 5M5 3h14"/></IconBase>,
+  check: (p) => <IconBase {...p}><polyline points="20 6 9 17 4 12"/></IconBase>,
+  plus: (p) => <IconBase {...p}><path d="M12 5v14M5 12h14"/></IconBase>,
+  trash: (p) => <IconBase {...p}><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></IconBase>,
+  chevronRight: (p) => <IconBase {...p}><polyline points="9 18 15 12 9 6"/></IconBase>,
+  repeat: (p) => <IconBase {...p}><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></IconBase>,
+};
+
+/* --------------------------- 운동 픽토그램 --------------------------- */
+function ExerciseIcon({ category, size = 38 }) {
+  const s = { width: size, height: size, color: T.primary };
+  const c = { fill:"none", stroke:"currentColor", strokeWidth:1.6, strokeLinecap:"round", strokeLinejoin:"round" };
+  const wrap = (ch) => <svg viewBox="0 0 32 32" style={s} aria-hidden>{ch}</svg>;
+  switch (category) {
+    case "legs": return wrap(<g {...c}><circle cx="16" cy="6" r="2.6"/><path d="M16 9v6M16 15l-5 8M16 15l5 8M9 23h4M19 23h4"/><path d="M6 11h20M6 9v4M26 9v4"/></g>);
+    case "chest": return wrap(<g {...c}><path d="M4 18h24M4 16v4M28 16v4M9 18v-3a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><circle cx="16" cy="9" r="2.4"/></g>);
+    case "back": return wrap(<g {...c}><path d="M6 6h20M16 6v6"/><path d="M11 12h10l-1.5 6h-7L11 12z"/><circle cx="16" cy="22" r="2.4"/><path d="M16 24v4"/></g>);
+    case "shoulders": return wrap(<g {...c}><circle cx="16" cy="7" r="2.4"/><path d="M16 10v8M16 12l-6-5M16 12l6-5M10 7l-3 0M22 7l3 0"/><path d="M16 18l-4 8M16 18l4 8"/></g>);
+    case "core": return wrap(<g {...c}><circle cx="7" cy="12" r="2.4"/><path d="M9 13l14 6M9 13l8 0M23 19h4M9 21h18"/></g>);
+    default: return wrap(<g {...c}><path d="M13 9a3 3 0 0 1 6 0"/><path d="M11 11h10l2 12a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2l2-12z"/><circle cx="16" cy="19" r="2.6"/></g>);
+  }
+}
+
+/* --------------------- 자체 SVG 라인 차트 (Recharts 대체) --------------------- */
+function MiniLineChart({ data, series, height = 220 }) {
+  const W = 700, H = height, padL = 38, padR = 14, padT = 12, padB = 26;
+  const n = data.length;
+  const vals = [];
+  series.forEach((s) => data.forEach((d) => { const v = +d[s.key]; if (!isNaN(v)) vals.push(v); }));
+  let min = vals.length ? Math.min(...vals) : 0;
+  let max = vals.length ? Math.max(...vals) : 1;
+  if (min === max) { min -= 1; max += 1; }
+  const span = max - min; min -= span * 0.12; max += span * 0.12;
+  const X = (i) => padL + (n <= 1 ? (W - padL - padR) / 2 : (i / (n - 1)) * (W - padL - padR));
+  const Y = (v) => padT + (1 - (v - min) / (max - min)) * (H - padT - padB);
+  const grid = [0, 0.5, 1].map((t) => min + t * (max - min));
+  return (
+    <div>
+      <div className="flex flex-wrap gap-3" style={{ marginBottom: 8 }}>
+        {series.map((s) => (
+          <span key={s.key} className="flex items-center gap-1" style={{ fontSize: 11.5, color: T.muted }}>
+            <span style={{ width: 11, height: 11, borderRadius: 3, background: s.color, display: "inline-block" }} /> {s.name}
+          </span>
+        ))}
+      </div>
+      <svg viewBox={"0 0 " + W + " " + H} width="100%" style={{ height: "auto", display: "block" }}>
+        {grid.map((g, i) => (
+          <g key={i}>
+            <line x1={padL} y1={Y(g)} x2={W - padR} y2={Y(g)} stroke={T.line} strokeDasharray="3 3" />
+            <text x={padL - 6} y={Y(g) + 3} textAnchor="end" fontSize="10" fill={T.muted}>{g.toFixed(1)}</text>
+          </g>
+        ))}
+        {data.map((d, i) => (
+          <text key={"x" + i} x={X(i)} y={H - 8} textAnchor="middle" fontSize="10" fill={T.muted}>{String(d.date).slice(5)}</text>
+        ))}
+        {series.map((s) => {
+          const pts = data.map((d, i) => { const v = +d[s.key]; return isNaN(v) ? null : (X(i) + "," + Y(v)); }).filter(Boolean).join(" ");
+          return <polyline key={s.key} points={pts} fill="none" stroke={s.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />;
+        })}
+        {series.map((s) => data.map((d, i) => { const v = +d[s.key]; return isNaN(v) ? null : <circle key={s.key + i} cx={X(i)} cy={Y(v)} r="3" fill={s.color} />; }))}
+      </svg>
+    </div>
+  );
+}
+
+/* ----------------------------- 초기 데이터 (이서린 실제 자료 기반) ----------------------------- */
+const initialProfile = {
+  name:"이서린", gender:"여성", age:39, height:166.3,
+  goals:["골격근량 회복 (24kg+ 목표)","좌우·상하체 균형 개선","주 3–4회 규칙적 운동 유지"],
+  findings:[
+    "상체 좌우 · 상하체 약한 불균형 — 단측(unilateral)·균형 운동 보강",
+    "골격근량 표준 하단 (2022년 24.4kg → 현재 22.4kg, 감소)",
+    "체지방률 23.1% · 내장지방레벨 4 — 정상 범위",
+    "InBody 점수 75점 · 기초대사량 1,259kcal (InBody 370S, 2026-02-28)",
+  ],
+  notes:"운동 전 5분 모빌리티 워밍업 필수. 좌우 비대칭으로 단측 운동 시 약한 쪽 먼저 수행. 데이터는 백업 탭에서 CSV로 내보내기/불러오기 가능.",
+};
+const initialBodyComp = [
+  { date:"2022-10-10", weight:56.6, skeletalMuscle:24.4, bodyFat:11.8, bodyFatPct:20.8, bmi:20.5 },
+  { date:"2025-01-04", weight:57.0, skeletalMuscle:22.3, bodyFat:15.7, bodyFatPct:27.6, bmi:20.6 },
+  { date:"2026-02-28", weight:53.5, skeletalMuscle:22.4, bodyFat:12.3, bodyFatPct:23.1, bmi:19.3 },
+];
+const initialProgram = [
+  { day:1, name:"하체 · 둔근", category:"legs", exercises:[
+    { id:"d1e1", name:"고블릿 스쿼트", category:"legs", unit:"kg", sets:3, reps:"10–18", alternatives:["백스쿼트","레그프레스"] },
+    { id:"d1e2", name:"루마니안 데드리프트", category:"legs", unit:"kg", sets:3, reps:"10–20", alternatives:["힙 스러스트","스티프 데드리프트"] },
+    { id:"d1e3", name:"레그프레스", category:"legs", unit:"kg", sets:3, reps:"15", alternatives:["핵스쿼트","고블릿 스쿼트"] },
+  ]},
+  { day:2, name:"어깨 · 삼두", category:"shoulders", exercises:[
+    { id:"d2e1", name:"인클라인 프레스(머신)", category:"chest", unit:"kg", sets:3, reps:"15", alternatives:["덤벨 인클라인","체스트프레스"] },
+    { id:"d2e2", name:"시티드 덤벨 숄더프레스", category:"shoulders", unit:"kg", sets:3, reps:"20", alternatives:["머신 숄더프레스","오버헤드 프레스"] },
+    { id:"d2e3", name:"사이드 레터럴 레이즈", category:"shoulders", unit:"kg", sets:3, reps:"15", alternatives:["케이블 레터럴","업라이트 로우"] },
+    { id:"d2e4", name:"트라이셉스 푸시다운", category:"chest", unit:"kg", sets:3, reps:"15", alternatives:["오버헤드 익스텐션","딥스"] },
+  ]},
+  { day:3, name:"등 · 후면", category:"back", exercises:[
+    { id:"d3e1", name:"친업(어시스트)", category:"back", unit:"kg", sets:4, reps:"15", alternatives:["랫풀다운","풀업"] },
+    { id:"d3e2", name:"시티드 로우", category:"back", unit:"kg", sets:4, reps:"15", alternatives:["바벨 로우","원암 덤벨 로우"] },
+    { id:"d3e3", name:"케이블 페이스풀", category:"back", unit:"kg", sets:3, reps:"20", alternatives:["리어 델트 플라이","밴드 풀어파트"] },
+    { id:"d3e4", name:"데드리프트", category:"fullbody", unit:"kg", sets:3, reps:"20", alternatives:["루마니안 데드리프트","트랩바 데드리프트"] },
+    { id:"d3e5", name:"힙 어브덕션", category:"legs", unit:"kg", sets:3, reps:"20", alternatives:["사이드 라잉 어브덕션","클램쉘"] },
+  ]},
+  { day:4, name:"풀바디 · 유산소", category:"fullbody", exercises:[
+    { id:"d4e1", name:"고블릿 스쿼트", category:"legs", unit:"kg", sets:3, reps:"20", alternatives:["백스쿼트","레그프레스"] },
+    { id:"d4e2", name:"랫풀다운", category:"back", unit:"kg", sets:4, reps:"10", alternatives:["친업","풀업"] },
+    { id:"d4e3", name:"힙 스러스트", category:"legs", unit:"kg", sets:2, reps:"10", alternatives:["글루트 브릿지","케이블 킥백"] },
+    { id:"d4e4", name:"유산소", category:"fullbody", unit:"kg", sets:1, reps:"20분", alternatives:["트레드밀","사이클","로잉"] },
+  ]},
+];
+
+/* ------------------------ localStorage 저장/복원 ------------------------ */
+const STORE_KEY = "pt_dashboard_lee_v2";
+function loadStore() {
+  try { const raw = localStorage.getItem(STORE_KEY); if (raw) return JSON.parse(raw); } catch (e) {}
+  return null;
+}
+const SAVED = loadStore();
+
+/* ------------------------------ CSV 유틸 ------------------------------ */
+function downloadCSV(filename, rows) {
+  const csv = Papa.unparse(rows);
+  const blob = new Blob(["\uFEFF" + csv], { type:"text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ============================== 메인 ============================== */
+function PTDashboard() {
+  const [tab, setTab] = useState("dashboard");
+  const [profile, setProfile] = useState(SAVED?.profile || initialProfile);
+  const [bodyComp, setBodyComp] = useState(SAVED?.bodyComp || initialBodyComp);
+  const [program, setProgram] = useState(SAVED?.program || initialProgram);
+  const [history, setHistory] = useState(SAVED?.history || []);
+  const [currentDayIdx, setCurrentDayIdx] = useState(SAVED?.currentDayIdx ?? 0);
+  const [logInputs, setLogInputs] = useState({});
+
+  useEffect(() => {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ profile, bodyComp, program, history, currentDayIdx })); } catch (e) {}
+  }, [profile, bodyComp, program, history, currentDayIdx]);
+
+  const tabs = [
+    { id:"dashboard", label:"대시보드", icon:I.dashboard },
+    { id:"health", label:"건강상태", icon:I.health },
+    { id:"body", label:"체성분", icon:I.activity },
+    { id:"log", label:"운동기록", icon:I.list },
+    { id:"program", label:"프로그램", icon:I.dumbbell },
+    { id:"backup", label:"백업", icon:I.database },
+  ];
+
+  const latest = bodyComp[bodyComp.length - 1] || {};
+  const first = bodyComp[0] || {};
+  const currentDay = program[currentDayIdx] || program[0];
+
+  function completeSession() {
+    const entries = currentDay.exercises.map((ex) => {
+      const v = logInputs[ex.id] || {};
+      return { exerciseName: ex.name, weight: v.weight ?? "", unit: ex.unit, reps: v.reps ?? ex.reps, sets: v.sets ?? ex.sets };
+    });
+    const session = { date: new Date().toISOString().slice(0,10), dayNumber: currentDay.day, dayName: currentDay.name, entries };
+    setHistory((h) => [session, ...h]);
+    setCurrentDayIdx((i) => (i + 1) % program.length);
+    setLogInputs({});
+    setTab("log");
+  }
+  function toggleUnit(dayIdx, exId) {
+    setProgram((prev) => prev.map((d, di) => di !== dayIdx ? d : {
+      ...d, exercises: d.exercises.map((e) => e.id !== exId ? e : { ...e, unit: e.unit === "kg" ? "lb" : "kg" }),
+    }));
+  }
+  function substitute(dayIdx, exId, altName) {
+    setProgram((prev) => prev.map((d, di) => di !== dayIdx ? d : {
+      ...d, exercises: d.exercises.map((e) => {
+        if (e.id !== exId) return e;
+        const newAlts = e.alternatives.filter((a) => a !== altName);
+        newAlts.push(e.name);
+        return { ...e, name: altName, alternatives: newAlts };
+      }),
+    }));
+  }
+
+  /* CSV 내보내기 */
+  const exportProgram = () => {
+    const rows = [];
+    program.forEach((d) => d.exercises.forEach((e) =>
+      rows.push({ day:d.day, dayName:d.name, exercise:e.name, category:e.category, unit:e.unit, sets:e.sets, reps:e.reps, alternatives:e.alternatives.join(" | ") })));
+    downloadCSV("PT_프로그램.csv", rows);
+  };
+  const exportHistory = () => {
+    const rows = [];
+    history.forEach((s) => s.entries.forEach((en) =>
+      rows.push({ date:s.date, day:s.dayNumber, dayName:s.dayName, exercise:en.exerciseName, weight:en.weight, unit:en.unit, reps:en.reps, sets:en.sets })));
+    downloadCSV("PT_운동기록.csv", rows.length ? rows : [{ date:"", day:"", dayName:"", exercise:"", weight:"", unit:"", reps:"", sets:"" }]);
+  };
+  const exportBody = () => downloadCSV("PT_체성분.csv", bodyComp);
+  const exportProfile = () => downloadCSV("PT_건강프로필.csv", [{
+    name:profile.name, gender:profile.gender, age:profile.age, height:profile.height,
+    goals:profile.goals.join(" | "), findings:profile.findings.join(" | "), notes:profile.notes }]);
+  const exportAll = () => { exportProgram(); exportHistory(); exportBody(); exportProfile(); };
+
+  /* CSV 불러오기 */
+  function parseFile(file, onDone) {
+    Papa.parse(file, { header:true, skipEmptyLines:true, complete:(res) => onDone(res.data) });
+  }
+  const importBody = (file) => parseFile(file, (rows) =>
+    setBodyComp(rows.map((r) => ({ date:r.date, weight:+r.weight, skeletalMuscle:+r.skeletalMuscle, bodyFat:+r.bodyFat, bodyFatPct:+r.bodyFatPct, bmi:+r.bmi })).filter((r) => r.date)));
+  const importProfile = (file) => parseFile(file, (rows) => {
+    const r = rows[0]; if (!r) return;
+    setProfile({ name:r.name||"", gender:r.gender||"", age:+r.age||"", height:+r.height||"",
+      goals:(r.goals||"").split(" | ").filter(Boolean), findings:(r.findings||"").split(" | ").filter(Boolean), notes:r.notes||"" });
+  });
+  const importProgram = (file) => parseFile(file, (rows) => {
+    const byDay = {};
+    rows.forEach((r) => { const d = +r.day;
+      if (!byDay[d]) byDay[d] = { day:d, name:r.dayName||("Day "+d), category:r.category||"fullbody", exercises:[] };
+      byDay[d].exercises.push({ id:"d"+d+"e"+(byDay[d].exercises.length+1), name:r.exercise, category:r.category||"fullbody",
+        unit:r.unit||"kg", sets:r.sets, reps:r.reps, alternatives:(r.alternatives||"").split(" | ").filter(Boolean) }); });
+    const arr = Object.values(byDay).sort((a,b) => a.day-b.day);
+    if (arr.length) { setProgram(arr); setCurrentDayIdx(0); }
+  });
+  const importHistory = (file) => parseFile(file, (rows) => {
+    const byKey = {};
+    rows.forEach((r) => { const key = r.date+"_"+r.day;
+      if (!byKey[key]) byKey[key] = { date:r.date, dayNumber:+r.day, dayName:r.dayName, entries:[] };
+      byKey[key].entries.push({ exerciseName:r.exercise, weight:r.weight, unit:r.unit, reps:r.reps, sets:r.sets }); });
+    setHistory(Object.values(byKey).filter((s) => s.date).reverse());
+  });
+
+  /* 렌더 */
+  return (
+    <div style={{ fontFamily:T.sans, background:T.bg, color:T.ink, minHeight:"100vh" }}>
+      <div className="mx-auto" style={{ maxWidth:1080, padding:"20px 18px 60px" }}>
+        <header className="flex items-center justify-between" style={{ marginBottom:18 }}>
+          <div>
+            <div style={{ fontSize:11, letterSpacing:3, color:T.muted, textTransform:"uppercase" }}>Personal Training</div>
+            <h1 style={{ fontFamily:T.serif, fontSize:30, fontWeight:700, lineHeight:1.1, margin:"2px 0 0" }}>
+              {profile.name} <span style={{ color:T.muted, fontSize:18, fontWeight:400 }}>전용 대시보드</span>
+            </h1>
+          </div>
+          <div className="text-right" style={{ fontSize:12, color:T.muted }}>
+            <div>{profile.gender} · {profile.age}세 · {profile.height}cm</div>
+            <div style={{ color:T.primary, fontWeight:600, marginTop:2 }}>다음 운동: Day {currentDay.day} · {currentDay.name}</div>
+          </div>
+        </header>
+
+        <nav className="flex flex-wrap gap-2" style={{ marginBottom:22 }}>
+          {tabs.map((tb) => {
+            const active = tab === tb.id; const Icon = tb.icon;
+            return (
+              <button key={tb.id} onClick={() => setTab(tb.id)} className="flex items-center gap-2"
+                style={{ padding:"9px 14px", borderRadius:10, fontSize:13, fontWeight:600, cursor:"pointer",
+                  border:"1px solid "+(active?T.primary:T.line), background:active?T.primary:T.surface, color:active?"#fff":T.ink }}>
+                <Icon size={15} /> {tb.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {tab === "dashboard" && (
+          <div className="flex flex-col gap-5">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <StatCard label="현재 체중" value={latest.weight + " kg"} delta={(latest.weight - first.weight).toFixed(1)} unit="kg" />
+              <StatCard label="체지방률" value={latest.bodyFatPct + " %"} delta={(latest.bodyFatPct - first.bodyFatPct).toFixed(1)} unit="%p" />
+              <StatCard label="골격근량" value={latest.skeletalMuscle + " kg"} delta={(latest.skeletalMuscle - first.skeletalMuscle).toFixed(1)} unit="kg" good />
+              <StatCard label="BMI" value={"" + latest.bmi} delta={(latest.bmi - first.bmi).toFixed(1)} unit="" />
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <Panel title="추세" className="md:col-span-2">
+                <MiniLineChart data={bodyComp} height={220} series={[
+                  { key:"weight", color:T.ink, name:"체중(kg)" },
+                  { key:"bodyFatPct", color:T.accent, name:"체지방률(%)" },
+                  { key:"skeletalMuscle", color:T.primary, name:"골격근(kg)" },
+                ]} />
+              </Panel>
+              <Panel title="오늘의 목표 세션">
+                <div className="flex items-center gap-3" style={{ marginBottom:10 }}>
+                  <ExerciseIcon category={currentDay.category} />
+                  <div>
+                    <div style={{ fontFamily:T.serif, fontSize:18, fontWeight:600 }}>Day {currentDay.day}</div>
+                    <div style={{ fontSize:12, color:T.muted }}>{currentDay.name}</div>
+                  </div>
+                </div>
+                <ul style={{ fontSize:12.5, color:T.muted, lineHeight:1.9, margin:0, paddingLeft:14 }}>
+                  {currentDay.exercises.map((e) => <li key={e.id}>{e.name} · {e.sets}×{e.reps}</li>)}
+                </ul>
+                <button onClick={() => setTab("log")} className="flex items-center justify-center gap-1"
+                  style={{ marginTop:12, width:"100%", padding:"9px", borderRadius:9, border:"none", background:T.primary, color:"#fff", fontWeight:600, fontSize:13, cursor:"pointer" }}>
+                  기록 시작 <I.chevronRight size={15} />
+                </button>
+              </Panel>
+            </div>
+            <Panel title="목표">
+              <div className="flex flex-wrap gap-2">
+                {profile.goals.map((g, i) => <span key={i} style={{ fontSize:12.5, padding:"6px 12px", borderRadius:999, background:T.primarySoft, color:T.primary, fontWeight:600 }}>{g}</span>)}
+              </div>
+            </Panel>
+          </div>
+        )}
+
+        {tab === "health" && (
+          <div className="flex flex-col gap-4">
+            <Panel title="임상 소견 / 자세 평가">
+              <ul style={{ margin:0, paddingLeft:16, lineHeight:2, fontSize:13.5 }}>{profile.findings.map((f, i) => <li key={i}>{f}</li>)}</ul>
+            </Panel>
+            <Panel title="목표">
+              <ul style={{ margin:0, paddingLeft:16, lineHeight:2, fontSize:13.5 }}>{profile.goals.map((g, i) => <li key={i}>{g}</li>)}</ul>
+            </Panel>
+            <Panel title="트레이너 메모">
+              <textarea className="pt-input" rows={4} value={profile.notes} onChange={(e) => setProfile({ ...profile, notes:e.target.value })} />
+            </Panel>
+          </div>
+        )}
+
+        {tab === "body" && (
+          <div className="flex flex-col gap-4">
+            <Panel title="측정 추이">
+              <MiniLineChart data={bodyComp} height={240} series={[
+                { key:"weight", color:T.ink, name:"체중(kg)" },
+                { key:"bodyFat", color:T.accent, name:"체지방량(kg)" },
+                { key:"skeletalMuscle", color:T.primary, name:"골격근(kg)" },
+              ]} />
+            </Panel>
+            <Panel title="측정 기록"><BodyCompTable data={bodyComp} onChange={setBodyComp} /></Panel>
+          </div>
+        )}
+
+        {tab === "log" && (
+          <div className="flex flex-col gap-4">
+            <Panel title={"이번 세션 — Day " + currentDay.day + " · " + currentDay.name}>
+              <p style={{ fontSize:12.5, color:T.muted, marginTop:-4, marginBottom:12 }}>
+                운동명은 프로그램에서 자동으로 채워집니다. 무게·횟수·세트만 입력 후 <b>세션 완료</b>를 누르면 기록되고 다음 Day로 진행돼요.
+              </p>
+              <div className="flex flex-col gap-2">
+                {currentDay.exercises.map((ex) => {
+                  const v = logInputs[ex.id] || {};
+                  const set = (k, val) => setLogInputs((p) => ({ ...p, [ex.id]: { ...p[ex.id], [k]:val } }));
+                  return (
+                    <div key={ex.id} className="flex items-center gap-3" style={{ padding:"10px 12px", border:"1px solid "+T.line, borderRadius:10, background:T.surface }}>
+                      <ExerciseIcon category={ex.category} size={30} />
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:600, fontSize:13.5 }}>{ex.name}</div>
+                        <div style={{ fontSize:11.5, color:T.muted }}>목표 {ex.sets}세트 × {ex.reps}</div>
+                      </div>
+                      <input className="pt-input" style={{ width:78 }} placeholder={"무게(" + ex.unit + ")"} value={v.weight||""} onChange={(e) => set("weight", e.target.value)} />
+                      <input className="pt-input" style={{ width:64 }} placeholder="횟수" value={v.reps||""} onChange={(e) => set("reps", e.target.value)} />
+                      <input className="pt-input" style={{ width:56 }} placeholder="세트" value={v.sets||""} onChange={(e) => set("sets", e.target.value)} />
+                    </div>
+                  );
+                })}
+              </div>
+              <button onClick={completeSession} className="flex items-center justify-center gap-2"
+                style={{ marginTop:14, width:"100%", padding:12, borderRadius:10, border:"none", background:T.primary, color:"#fff", fontWeight:700, fontSize:14, cursor:"pointer" }}>
+                <I.check size={17} /> 세션 완료 · 다음 Day로 진행
+              </button>
+            </Panel>
+            <Panel title={"기록 히스토리 (" + history.length + ")"}>
+              {history.length === 0 ? <p style={{ fontSize:13, color:T.muted }}>아직 완료된 세션이 없습니다.</p> : (
+                <div className="flex flex-col gap-2">
+                  {history.map((s, i) => (
+                    <div key={i} style={{ padding:"10px 12px", border:"1px solid "+T.line, borderRadius:10 }}>
+                      <div className="flex items-center justify-between" style={{ marginBottom:6 }}>
+                        <span style={{ fontWeight:600, fontSize:13 }}>Day {s.dayNumber} · {s.dayName}</span>
+                        <span style={{ fontSize:12, color:T.muted }}>{s.date}</span>
+                      </div>
+                      <div style={{ fontSize:12, color:T.muted, lineHeight:1.8 }}>
+                        {s.entries.map((en, j) => <span key={j}>{en.exerciseName} {en.weight ? (en.weight + (en.unit||"")) : ""} {en.reps}×{en.sets}{j < s.entries.length-1 ? " · " : ""}</span>)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Panel>
+          </div>
+        )}
+
+        {tab === "program" && (
+          <div className="flex flex-col gap-4">
+            {program.map((d, di) => (
+              <Panel key={d.day} title={"Day " + d.day + " · " + d.name} badge={di === currentDayIdx ? "다음 세션" : null}>
+                <div className="flex flex-col gap-2">
+                  {d.exercises.map((ex) => (
+                    <div key={ex.id} className="flex items-center gap-3 flex-wrap" style={{ padding:"10px 12px", border:"1px solid "+T.line, borderRadius:10 }}>
+                      <ExerciseIcon category={ex.category} size={30} />
+                      <div style={{ flex:1, minWidth:140 }}>
+                        <div style={{ fontWeight:600, fontSize:13.5 }}>{ex.name}</div>
+                        <div style={{ fontSize:11.5, color:T.muted }}>{ex.sets}세트 × {ex.reps}</div>
+                      </div>
+                      <button onClick={() => toggleUnit(di, ex.id)} style={{ padding:"5px 10px", borderRadius:8, border:"1px solid "+T.line, background:T.surface, fontSize:12, fontWeight:600, cursor:"pointer", color:T.ink }}>
+                        {ex.unit.toUpperCase()}
+                      </button>
+                      <div className="flex items-center gap-1" style={{ color:T.muted }}>
+                        <I.repeat size={14} />
+                        <select className="pt-input" style={{ width:150 }} value="" onChange={(e) => { if (e.target.value) substitute(di, ex.id, e.target.value); }}>
+                          <option value="">대체 운동…</option>
+                          {ex.alternatives.map((a) => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+            ))}
+          </div>
+        )}
+
+        {tab === "backup" && (
+          <div className="flex flex-col gap-4">
+            <Panel title="전체 백업">
+              <p style={{ fontSize:12.5, color:T.muted, marginTop:-4, marginBottom:12 }}>
+                4종 데이터를 각각 CSV로 내보내고 불러올 수 있습니다. 이 페이지는 브라우저에 자동 저장되며, 기기/브라우저를 옮길 때는 CSV로 백업하세요.
+              </p>
+              <button onClick={exportAll} className="flex items-center justify-center gap-2"
+                style={{ width:"100%", padding:11, borderRadius:10, border:"none", background:T.ink, color:"#fff", fontWeight:700, fontSize:13.5, cursor:"pointer" }}>
+                <I.download size={16} /> 4개 파일 한 번에 내보내기
+              </button>
+            </Panel>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <BackupCard title="운동 프로그램" onExport={exportProgram} onImport={importProgram} />
+              <BackupCard title="운동 기록" onExport={exportHistory} onImport={importHistory} />
+              <BackupCard title="체성분" onExport={exportBody} onImport={importBody} />
+              <BackupCard title="건강 프로필" onExport={exportProfile} onImport={importProfile} />
+            </div>
+          </div>
+        )}
+
+        <footer style={{ marginTop:28, fontSize:11, color:T.muted, textAlign:"center" }}>
+          이서린 PT 대시보드 · 데이터는 백업 탭에서 CSV로 내보내기/불러오기 가능
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+function Panel({ title, badge, children, className }) {
+  return (
+    <section className={className || ""} style={{ background:T.surface, border:"1px solid "+T.line, borderRadius:14, padding:16 }}>
+      <div className="flex items-center justify-between" style={{ marginBottom:12 }}>
+        <h2 style={{ fontFamily:T.serif, fontSize:16, fontWeight:600, margin:0 }}>{title}</h2>
+        {badge && <span style={{ fontSize:11, fontWeight:700, color:T.accent, background:T.accentSoft, padding:"3px 9px", borderRadius:999 }}>{badge}</span>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function StatCard({ label, value, delta, unit, good }) {
+  const num = parseFloat(delta);
+  const up = num > 0;
+  const positive = good ? up : !up;
+  const color = num === 0 ? T.muted : positive ? T.primary : T.accent;
+  return (
+    <div style={{ background:T.surface, border:"1px solid "+T.line, borderRadius:14, padding:14 }}>
+      <div style={{ fontSize:11.5, color:T.muted, marginBottom:4 }}>{label}</div>
+      <div style={{ fontFamily:T.serif, fontSize:24, fontWeight:700, lineHeight:1 }}>{value}</div>
+      <div style={{ fontSize:11.5, color, marginTop:5, fontWeight:600 }}>
+        {isNaN(num) || num === 0 ? "변화 없음" : ((up ? "▲ " : "▼ ") + Math.abs(num) + " " + unit + " (시작 대비)")}
+      </div>
+    </div>
+  );
+}
+
+function BodyCompTable({ data, onChange }) {
+  const [form, setForm] = useState({ date:"", weight:"", skeletalMuscle:"", bodyFat:"", bodyFatPct:"", bmi:"" });
+  const cols = [["date","날짜"],["weight","체중"],["skeletalMuscle","골격근"],["bodyFat","체지방량"],["bodyFatPct","체지방률"],["bmi","BMI"]];
+  const add = () => {
+    if (!form.date) return;
+    const row = { ...form, weight:+form.weight, skeletalMuscle:+form.skeletalMuscle, bodyFat:+form.bodyFat, bodyFatPct:+form.bodyFatPct, bmi:+form.bmi };
+    onChange([...data, row].sort((a,b) => a.date.localeCompare(b.date)));
+    setForm({ date:"", weight:"", skeletalMuscle:"", bodyFat:"", bodyFatPct:"", bmi:"" });
+  };
+  const remove = (i) => onChange(data.filter((_, idx) => idx !== i));
+  return (
+    <div style={{ overflowX:"auto" }}>
+      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12.5 }}>
+        <thead>
+          <tr style={{ color:T.muted, textAlign:"left" }}>
+            {cols.map(([, l]) => <th key={l} style={{ padding:"6px 8px", borderBottom:"1px solid "+T.line }}>{l}</th>)}
+            <th style={{ borderBottom:"1px solid "+T.line }} />
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((r, i) => (
+            <tr key={i}>
+              {cols.map(([k]) => <td key={k} style={{ padding:"7px 8px", borderBottom:"1px solid "+T.line }}>{r[k]}</td>)}
+              <td style={{ padding:"7px 8px", borderBottom:"1px solid "+T.line, textAlign:"right" }}>
+                <button onClick={() => remove(i)} style={{ border:"none", background:"none", cursor:"pointer", color:T.accent }}><I.trash size={15} /></button>
+              </td>
+            </tr>
+          ))}
+          <tr>
+            {cols.map(([k]) => (
+              <td key={k} style={{ padding:"6px 6px" }}>
+                <input className="pt-input" type={k === "date" ? "date" : "number"} value={form[k]} onChange={(e) => setForm({ ...form, [k]:e.target.value })} />
+              </td>
+            ))}
+            <td style={{ textAlign:"right" }}>
+              <button onClick={add} style={{ border:"none", background:T.primary, color:"#fff", borderRadius:8, padding:"7px 9px", cursor:"pointer" }}><I.plus size={15} /></button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function BackupCard({ title, onExport, onImport }) {
+  const ref = useRef(null);
+  return (
+    <div style={{ background:T.surface, border:"1px solid "+T.line, borderRadius:12, padding:14 }}>
+      <div style={{ fontWeight:600, fontSize:13.5, marginBottom:10 }}>{title}</div>
+      <div className="flex gap-2">
+        <button onClick={onExport} className="flex items-center justify-center gap-1"
+          style={{ flex:1, padding:"8px", borderRadius:9, border:"1px solid "+T.primary, background:T.primarySoft, color:T.primary, fontWeight:600, fontSize:12.5, cursor:"pointer" }}>
+          <I.download size={14} /> 내보내기
+        </button>
+        <button onClick={() => ref.current && ref.current.click()} className="flex items-center justify-center gap-1"
+          style={{ flex:1, padding:"8px", borderRadius:9, border:"1px solid "+T.line, background:T.surface, color:T.ink, fontWeight:600, fontSize:12.5, cursor:"pointer" }}>
+          <I.upload size={14} /> 불러오기
+        </button>
+        <input ref={ref} type="file" accept=".csv" style={{ display:"none" }}
+          onChange={(e) => { const f = e.target.files && e.target.files[0]; if (f) onImport(f); e.target.value = ""; }} />
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<PTDashboard />);
+</script>
+</body>
+</html>
