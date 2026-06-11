@@ -2,13 +2,12 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>이서린 PT 대시보드</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-<!-- React / ReactDOM / PapaParse / Babel (모두 cdnjs) -->
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -16,23 +15,39 @@
 
 <style>
   :root {
-    --bg:#F4F1EA; --surface:#FFFFFF; --ink:#211D18; --muted:#807769;
-    --line:#E7E1D6; --primary:#226452; --primarySoft:#E4EFEA;
-    --accent:#CF6646; --accentSoft:#F8E7E0;
-    --serif:'Fraunces',Georgia,serif; --sans:'Spline Sans',system-ui,sans-serif;
+    --paper:#F7F8F6; --card:#FFFFFF; --ink:#16201D; --haze:#76837D;
+    --line:#E2E7E3; --moss:#1E6B54; --mossSoft:#E4F0EB; --clay:#D85C3F; --claySoft:#FBE9E3;
+    --gold:#B98A33; --goldSoft:#F6EEDD;
+    --disp:'Archivo','IBM Plex Sans KR',sans-serif;
+    --body:'IBM Plex Sans KR','Archivo',sans-serif;
   }
-  * { box-sizing: border-box; }
-  html, body { margin:0; padding:0; background:var(--bg); }
-  body { font-family:var(--sans); color:var(--ink); }
-  input, select, textarea { font-family:var(--sans); }
-  .pt-input { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:13px; outline:none; }
-  .pt-input:focus { border-color:var(--primary); }
-  #loading { display:flex; align-items:center; justify-content:center; height:100vh; color:var(--muted); font-size:14px; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; padding:0; background:var(--paper); }
+  body { font-family:var(--body); color:var(--ink); font-size:14.5px; line-height:1.55; }
+  input, select, textarea, button { font-family:var(--body); }
+  #loading { display:flex; align-items:center; justify-content:center; height:100vh; color:var(--haze); font-size:14px; }
 
-  /* --- 레이아웃 유틸 (Tailwind 대체, 내장) --- */
+  .pt-input { width:100%; min-height:44px; padding:10px 12px; border:1.5px solid var(--line); border-radius:10px; background:#fff; font-size:15px; outline:none; color:var(--ink); }
+  .pt-input:focus { border-color:var(--moss); }
+  .pt-input::placeholder { color:#ADB6B1; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:44px; padding:10px 16px;
+         border-radius:12px; border:1.5px solid var(--line); background:var(--card); color:var(--ink);
+         font-size:14px; font-weight:600; cursor:pointer; }
+  .btn:active { transform:scale(.98); }
+  .btn-primary { background:var(--moss); border-color:var(--moss); color:#fff; font-weight:700; }
+  .btn-soft { background:var(--mossSoft); border-color:var(--mossSoft); color:var(--moss); }
+  .btn-sm { min-height:36px; padding:6px 12px; font-size:13px; border-radius:10px; }
+  .chip { display:inline-flex; align-items:center; gap:6px; min-height:40px; padding:8px 14px; border-radius:999px;
+          border:1.5px solid var(--line); background:var(--card); color:var(--ink); font-size:13.5px; font-weight:600; cursor:pointer; }
+  .chip.on { background:var(--ink); border-color:var(--ink); color:#fff; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px; }
+  .h-disp { font-family:var(--disp); font-weight:800; letter-spacing:-0.01em; }
+  .label-xs { font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--haze); }
+
   .mx-auto{margin-left:auto;margin-right:auto}
   .flex{display:flex}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}
-  .items-center{align-items:center}.justify-between{justify-content:space-between}.justify-center{justify-content:center}
+  .items-center{align-items:center}.items-end{align-items:flex-end}
+  .justify-between{justify-content:space-between}.justify-center{justify-content:center}
   .text-right{text-align:right}
   .grid{display:grid}
   .grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}
@@ -44,6 +59,21 @@
     .md\:grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
     .md\:col-span-2{grid-column:span 2 / span 2}
   }
+
+  /* 하단 내비 (모바일) / 상단 내비 (데스크톱) */
+  .bottom-nav { position:fixed; left:0; right:0; bottom:0; z-index:50; display:flex;
+    background:rgba(255,255,255,.96); backdrop-filter:blur(8px); border-top:1px solid var(--line);
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom)); }
+  .bottom-nav button { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+    border:none; background:none; color:var(--haze); font-size:10.5px; font-weight:600; padding:6px 0; cursor:pointer; border-radius:10px; }
+  .bottom-nav button.on { color:var(--moss); }
+  .top-nav { display:none; }
+  .page-pad { padding-bottom:92px; }
+  @media (min-width:768px){
+    .bottom-nav { display:none; }
+    .top-nav { display:flex; }
+    .page-pad { padding-bottom:60px; }
+  }
 </style>
 </head>
 <body>
@@ -52,52 +82,52 @@
 <script type="text/babel" data-presets="react">
 const { useState, useRef, useEffect } = React;
 
-/* ----------------------------- 테마 토큰 ----------------------------- */
+/* ----------------------------- 토큰 ----------------------------- */
 const T = {
-  bg:"#F4F1EA", surface:"#FFFFFF", ink:"#211D18", muted:"#807769",
-  line:"#E7E1D6", primary:"#226452", primarySoft:"#E4EFEA",
-  accent:"#CF6646", accentSoft:"#F8E7E0", gold:"#BC8C3C",
-  serif:"'Fraunces', Georgia, serif", sans:"'Spline Sans', system-ui, sans-serif",
+  paper:"#F7F8F6", card:"#FFFFFF", ink:"#16201D", haze:"#76837D",
+  line:"#E2E7E3", moss:"#1E6B54", mossSoft:"#E4F0EB", clay:"#D85C3F", claySoft:"#FBE9E3",
+  gold:"#B98A33", goldSoft:"#F6EEDD",
+  disp:"'Archivo','IBM Plex Sans KR',sans-serif",
 };
 
-/* 강도 메타 / 순환 */
 const INT = {
-  high:{ l:"강도 상", c:T.accent, bg:T.accentSoft },
-  mid:{ l:"강도 중", c:T.gold, bg:"#F4ECD9" },
-  low:{ l:"강도 하", c:T.primary, bg:T.primarySoft },
+  high:{ l:"강도 상", c:T.clay, bg:T.claySoft },
+  mid:{ l:"강도 중", c:T.gold, bg:T.goldSoft },
+  low:{ l:"강도 하", c:T.moss, bg:T.mossSoft },
 };
 const NEXT_INT = { high:"mid", mid:"low", low:"high" };
 const INT_ORDER = { low:1, mid:2, high:3 };
+const CATS = [["legs","하체"],["chest","가슴"],["back","등"],["shoulders","어깨"],["core","코어"],["fullbody","전신"]];
 
-/* ----------------------- 인라인 아이콘 ----------------------- */
-function IconBase({ size = 16, fill = "none", children }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill}
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{children}</svg>
-  );
+/* ----------------------- 아이콘 ----------------------- */
+function Ic({ size = 18, children }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{children}</svg>;
 }
 const I = {
-  dashboard: (p) => <IconBase {...p}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></IconBase>,
-  health: (p) => <IconBase {...p}><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></IconBase>,
-  activity: (p) => <IconBase {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></IconBase>,
-  dumbbell: (p) => <IconBase {...p}><path d="M2 12h2M20 12h2M7 12h10"/><rect x="4" y="9" width="3" height="6" rx="1"/><rect x="17" y="9" width="3" height="6" rx="1"/></IconBase>,
-  list: (p) => <IconBase {...p}><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></IconBase>,
-  database: (p) => <IconBase {...p}><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></IconBase>,
-  download: (p) => <IconBase {...p}><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></IconBase>,
-  upload: (p) => <IconBase {...p}><path d="M12 21V9M7 14l5-5 5 5M5 3h14"/></IconBase>,
-  check: (p) => <IconBase {...p}><polyline points="20 6 9 17 4 12"/></IconBase>,
-  plus: (p) => <IconBase {...p}><path d="M12 5v14M5 12h14"/></IconBase>,
-  trash: (p) => <IconBase {...p}><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></IconBase>,
-  chevronRight: (p) => <IconBase {...p}><polyline points="9 18 15 12 9 6"/></IconBase>,
-  up: (p) => <IconBase {...p}><polyline points="6 15 12 9 18 15"/></IconBase>,
-  down: (p) => <IconBase {...p}><polyline points="6 9 12 15 18 9"/></IconBase>,
-  sort: (p) => <IconBase {...p}><path d="M3 6h12M3 12h9M3 18h6M17 8l4-4 4 4M21 4v16"/></IconBase>,
-  repeat: (p) => <IconBase {...p}><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></IconBase>,
+  home: (p) => <Ic {...p}><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></Ic>,
+  list: (p) => <Ic {...p}><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></Ic>,
+  dumbbell: (p) => <Ic {...p}><path d="M2 12h2M20 12h2M7 12h10"/><rect x="4" y="9" width="3" height="6" rx="1"/><rect x="17" y="9" width="3" height="6" rx="1"/></Ic>,
+  activity: (p) => <Ic {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></Ic>,
+  health: (p) => <Ic {...p}><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></Ic>,
+  database: (p) => <Ic {...p}><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></Ic>,
+  download: (p) => <Ic {...p}><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></Ic>,
+  upload: (p) => <Ic {...p}><path d="M12 21V9M7 14l5-5 5 5M5 3h14"/></Ic>,
+  check: (p) => <Ic {...p}><polyline points="20 6 9 17 4 12"/></Ic>,
+  plus: (p) => <Ic {...p}><path d="M12 5v14M5 12h14"/></Ic>,
+  trash: (p) => <Ic {...p}><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></Ic>,
+  up: (p) => <Ic {...p}><polyline points="6 15 12 9 18 15"/></Ic>,
+  down: (p) => <Ic {...p}><polyline points="6 9 12 15 18 9"/></Ic>,
+  sort: (p) => <Ic {...p}><path d="M3 6h12M3 12h9M3 18h6M17 8l4-4 4 4M21 4v16"/></Ic>,
+  repeat: (p) => <Ic {...p}><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></Ic>,
+  edit: (p) => <Ic {...p}><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></Ic>,
+  x: (p) => <Ic {...p}><path d="M18 6L6 18M6 6l12 12"/></Ic>,
+  timer: (p) => <Ic {...p}><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></Ic>,
+  copy: (p) => <Ic {...p}><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></Ic>,
 };
 
 /* --------------------------- 운동 픽토그램 --------------------------- */
-function ExerciseIcon({ category, size = 38 }) {
-  const s = { width: size, height: size, color: T.primary };
+function ExerciseIcon({ category, size = 36 }) {
+  const s = { width:size, height:size, color:T.moss, flexShrink:0 };
   const c = { fill:"none", stroke:"currentColor", strokeWidth:1.6, strokeLinecap:"round", strokeLinejoin:"round" };
   const wrap = (ch) => <svg viewBox="0 0 32 32" style={s} aria-hidden>{ch}</svg>;
   switch (category) {
@@ -110,9 +140,9 @@ function ExerciseIcon({ category, size = 38 }) {
   }
 }
 
-/* --------------------- 자체 SVG 라인 차트 --------------------- */
+/* --------------------- SVG 라인 차트 --------------------- */
 function MiniLineChart({ data, series, height = 220 }) {
-  const W = 700, H = height, padL = 38, padR = 14, padT = 12, padB = 26;
+  const W = 700, H = height, padL = 40, padR = 14, padT = 12, padB = 26;
   const n = data.length;
   const vals = [];
   series.forEach((s) => data.forEach((d) => { const v = +d[s.key]; if (!isNaN(v)) vals.push(v); }));
@@ -127,7 +157,7 @@ function MiniLineChart({ data, series, height = 220 }) {
     <div>
       <div className="flex flex-wrap gap-3" style={{ marginBottom: 8 }}>
         {series.map((s) => (
-          <span key={s.key} className="flex items-center gap-1" style={{ fontSize: 11.5, color: T.muted }}>
+          <span key={s.key} className="flex items-center gap-1" style={{ fontSize: 12, color: T.haze, fontWeight:600 }}>
             <span style={{ width: 11, height: 11, borderRadius: 3, background: s.color, display: "inline-block" }} /> {s.name}
           </span>
         ))}
@@ -136,23 +166,23 @@ function MiniLineChart({ data, series, height = 220 }) {
         {grid.map((g, i) => (
           <g key={i}>
             <line x1={padL} y1={Y(g)} x2={W - padR} y2={Y(g)} stroke={T.line} strokeDasharray="3 3" />
-            <text x={padL - 6} y={Y(g) + 3} textAnchor="end" fontSize="10" fill={T.muted}>{g.toFixed(1)}</text>
+            <text x={padL - 6} y={Y(g) + 3} textAnchor="end" fontSize="10" fill={T.haze}>{g.toFixed(1)}</text>
           </g>
         ))}
         {data.map((d, i) => (
-          <text key={"x" + i} x={X(i)} y={H - 8} textAnchor="middle" fontSize="10" fill={T.muted}>{String(d.date).slice(5)}</text>
+          <text key={"x" + i} x={X(i)} y={H - 8} textAnchor="middle" fontSize="10" fill={T.haze}>{String(d.date).slice(2)}</text>
         ))}
         {series.map((s) => {
           const pts = data.map((d, i) => { const v = +d[s.key]; return isNaN(v) ? null : (X(i) + "," + Y(v)); }).filter(Boolean).join(" ");
-          return <polyline key={s.key} points={pts} fill="none" stroke={s.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />;
+          return <polyline key={s.key} points={pts} fill="none" stroke={s.color} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />;
         })}
-        {series.map((s) => data.map((d, i) => { const v = +d[s.key]; return isNaN(v) ? null : <circle key={s.key + i} cx={X(i)} cy={Y(v)} r="3" fill={s.color} />; }))}
+        {series.map((s) => data.map((d, i) => { const v = +d[s.key]; return isNaN(v) ? null : <circle key={s.key + i} cx={X(i)} cy={Y(v)} r="3.2" fill={s.color} />; }))}
       </svg>
     </div>
   );
 }
 
-/* ----------------------------- 초기 데이터 ----------------------------- */
+/* ----------------------------- 초기 데이터 (이서린 실측 기반) ----------------------------- */
 const initialProfile = {
   name:"이서린", gender:"여성", age:39, height:166.3,
   goals:["골격근량 회복 (24kg+ 목표)","좌우·상하체 균형 개선","주 3–4회 규칙적 운동 유지"],
@@ -162,7 +192,7 @@ const initialProfile = {
     "체지방률 23.1% · 내장지방레벨 4 — 정상 범위",
     "InBody 점수 75점 · 기초대사량 1,259kcal (InBody 370S, 2026-02-28)",
   ],
-  notes:"운동 전 5분 모빌리티 워밍업 필수. 좌우 비대칭으로 단측 운동 시 약한 쪽 먼저 수행. 데이터는 백업 탭에서 CSV로 내보내기/불러오기 가능.",
+  notes:"운동 전 5분 모빌리티 워밍업 필수. 좌우 비대칭으로 단측 운동 시 약한 쪽 먼저 수행.",
 };
 const initialBodyComp = [
   { date:"2022-10-10", weight:56.6, skeletalMuscle:24.4, bodyFat:11.8, bodyFatPct:20.8, bmi:20.5 },
@@ -196,28 +226,27 @@ const initialProgram = [
   ]},
 ];
 
-/* 프로그램 정규화 — key/intensity/번호 보정 (구버전 데이터 호환) */
 function normalizeProgram(arr) {
   if (!Array.isArray(arr) || !arr.length) arr = initialProgram;
   return arr.map((d, i) => ({
-    ...d,
-    day: i + 1,
-    key: d.key || ("d" + (i + 1)),
-    intensity: d.intensity || "mid",
-    category: d.category || "fullbody",
+    ...d, day: i + 1, key: d.key || ("d" + (i + 1)),
+    intensity: d.intensity || "mid", category: d.category || "fullbody",
     exercises: d.exercises || [],
   }));
 }
 
-/* ------------------------ localStorage 저장/복원 ------------------------ */
-const STORE_KEY = "pt_dashboard_lee_v2";
+/* ------------------------ 저장/복원 (v3, v2 호환) ------------------------ */
+const STORE_KEY = "pt_dashboard_lee_v3";
 function loadStore() {
-  try { const raw = localStorage.getItem(STORE_KEY); if (raw) return JSON.parse(raw); } catch (e) {}
+  try {
+    const raw = localStorage.getItem(STORE_KEY) || localStorage.getItem("pt_dashboard_lee_v2");
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
   return null;
 }
 const SAVED = loadStore();
 
-/* ------------------------------ CSV 유틸 ------------------------------ */
+/* ------------------------------ CSV ------------------------------ */
 function downloadCSV(filename, rows) {
   const csv = Papa.unparse(rows);
   const blob = new Blob(["\uFEFF" + csv], { type:"text/csv;charset=utf-8;" });
@@ -228,9 +257,52 @@ function downloadCSV(filename, rows) {
   URL.revokeObjectURL(url);
 }
 
+/* --------------------------- 휴식 타이머 --------------------------- */
+function RestTimer() {
+  const [left, setLeft] = useState(0);
+  const [total, setTotal] = useState(0);
+  const ref = useRef(null);
+  useEffect(() => () => clearInterval(ref.current), []);
+  function start(sec) {
+    clearInterval(ref.current);
+    setTotal(sec); setLeft(sec);
+    ref.current = setInterval(() => {
+      setLeft((v) => { if (v <= 1) { clearInterval(ref.current); return 0; } return v - 1; });
+    }, 1000);
+  }
+  function stop() { clearInterval(ref.current); setLeft(0); setTotal(0); }
+  const mm = String(Math.floor(left / 60));
+  const ss = String(left % 60).padStart(2, "0");
+  const pct = total ? (left / total) * 100 : 0;
+  return (
+    <div className="card" style={{ padding:14 }}>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2" style={{ color:T.haze }}>
+          <I.timer size={18} />
+          <span style={{ fontSize:13, fontWeight:700 }}>휴식 타이머</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {[60, 90, 120].map((s) => (
+            <button key={s} className="btn btn-sm" onClick={() => start(s)}>{s}초</button>
+          ))}
+          {left > 0 && <button className="btn btn-sm" style={{ color:T.clay, borderColor:T.claySoft, background:T.claySoft }} onClick={stop}>중지</button>}
+        </div>
+      </div>
+      {left > 0 && (
+        <div style={{ marginTop:10 }}>
+          <div className="h-disp" style={{ fontSize:40, lineHeight:1, color: left <= 5 ? T.clay : T.ink }}>{mm}:{ss}</div>
+          <div style={{ height:6, background:T.line, borderRadius:99, marginTop:8, overflow:"hidden" }}>
+            <div style={{ height:"100%", width:pct + "%", background: left <= 5 ? T.clay : T.moss, transition:"width 1s linear" }} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ============================== 메인 ============================== */
 function PTDashboard() {
-  const [tab, setTab] = useState("dashboard");
+  const [tab, setTab] = useState("home");
   const [profile, setProfile] = useState(SAVED?.profile || initialProfile);
   const [bodyComp, setBodyComp] = useState(SAVED?.bodyComp || initialBodyComp);
   const [program, setProgram] = useState(normalizeProgram(SAVED?.program || initialProgram));
@@ -239,6 +311,8 @@ function PTDashboard() {
   const [selectedDayIdx, setSelectedDayIdx] = useState(SAVED?.currentDayIdx ?? 0);
   const [dayConditions, setDayConditions] = useState(SAVED?.dayConditions || {});
   const [logInputs, setLogInputs] = useState({});
+  const [openDays, setOpenDays] = useState(null); // 프로그램 탭 아코디언
+  const [editKey, setEditKey] = useState(null);   // 편집 중인 Day key
 
   const today = new Date().toISOString().slice(0, 10);
   const todayCondition = dayConditions[today] || "normal";
@@ -248,12 +322,12 @@ function PTDashboard() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify({ profile, bodyComp, program, history, currentDayIdx, dayConditions })); } catch (e) {}
   }, [profile, bodyComp, program, history, currentDayIdx, dayConditions]);
 
-  const tabs = [
-    { id:"dashboard", label:"대시보드", icon:I.dashboard },
-    { id:"health", label:"건강상태", icon:I.health },
-    { id:"body", label:"체성분", icon:I.activity },
-    { id:"log", label:"운동기록", icon:I.list },
+  const navItems = [
+    { id:"home", label:"홈", icon:I.home },
+    { id:"log", label:"기록", icon:I.list },
     { id:"program", label:"프로그램", icon:I.dumbbell },
+    { id:"body", label:"체성분", icon:I.activity },
+    { id:"health", label:"건강", icon:I.health },
     { id:"backup", label:"백업", icon:I.database },
   ];
 
@@ -261,8 +335,19 @@ function PTDashboard() {
   const first = bodyComp[0] || {};
   const currentDay = program[currentDayIdx] || program[0];
   const selectedDay = program[selectedDayIdx] || currentDay;
+  if (openDays === null && currentDay) setOpenDays([currentDay.key]);
 
-  /* 세션 완료 — 선택한 Day 기록 후 다음으로 진행 */
+  /* 지난 기록 조회 (history는 최신순) */
+  function lastRecordFor(name) {
+    for (const s of history) {
+      for (const en of s.entries || []) {
+        if (en.exerciseName === name && (en.weight || en.reps)) return { ...en, date: s.date };
+      }
+    }
+    return null;
+  }
+
+  /* 세션 완료 */
   function completeSession() {
     const day = selectedDay;
     const entries = day.exercises.map((ex) => {
@@ -272,22 +357,39 @@ function PTDashboard() {
     const session = { date: today, dayNumber: day.day, dayName: day.name, condition: todayCondition, entries };
     setHistory((h) => [session, ...h]);
     const next = (selectedDayIdx + 1) % program.length;
-    setCurrentDayIdx(next);
-    setSelectedDayIdx(next);
+    setCurrentDayIdx(next); setSelectedDayIdx(next);
     setLogInputs({});
   }
 
-  function toggleUnit(dayIdx, exId) {
-    setProgram((prev) => prev.map((d, di) => di !== dayIdx ? d : {
+  const doneCount = selectedDay.exercises.filter((ex) => (logInputs[ex.id] || {}).done).length;
+
+  /* 프로그램 편집 */
+  function patchExercise(dayKey, exId, patch) {
+    setProgram((prev) => prev.map((d) => d.key !== dayKey ? d : {
+      ...d, exercises: d.exercises.map((e) => e.id !== exId ? e : { ...e, ...patch }),
+    }));
+  }
+  function deleteExercise(dayKey, exId) {
+    setProgram((prev) => prev.map((d) => d.key !== dayKey ? d : { ...d, exercises: d.exercises.filter((e) => e.id !== exId) }));
+  }
+  function addExercise(dayKey, ex) {
+    setProgram((prev) => prev.map((d) => d.key !== dayKey ? d : {
+      ...d, exercises: [...d.exercises, { id: dayKey + "e" + Date.now(), alternatives: [], unit:"kg", category:"fullbody", ...ex }],
+    }));
+  }
+  function renameDay(dayKey, name) {
+    setProgram((prev) => prev.map((d) => d.key !== dayKey ? d : { ...d, name }));
+  }
+  function toggleUnit(dayKey, exId) {
+    setProgram((prev) => prev.map((d) => d.key !== dayKey ? d : {
       ...d, exercises: d.exercises.map((e) => e.id !== exId ? e : { ...e, unit: e.unit === "kg" ? "lb" : "kg" }),
     }));
   }
-  function substitute(dayIdx, exId, altName) {
-    setProgram((prev) => prev.map((d, di) => di !== dayIdx ? d : {
+  function substitute(dayKey, exId, altName) {
+    setProgram((prev) => prev.map((d) => d.key !== dayKey ? d : {
       ...d, exercises: d.exercises.map((e) => {
         if (e.id !== exId) return e;
-        const newAlts = e.alternatives.filter((a) => a !== altName);
-        newAlts.push(e.name);
+        const newAlts = e.alternatives.filter((a) => a !== altName); newAlts.push(e.name);
         return { ...e, name: altName, alternatives: newAlts };
       }),
     }));
@@ -295,45 +397,37 @@ function PTDashboard() {
   function cycleIntensity(key) {
     setProgram((prev) => prev.map((d) => d.key === key ? { ...d, intensity: NEXT_INT[d.intensity] || "mid" } : d));
   }
-
-  /* 재정렬 — 번호 갱신 + currentDay/selectedDay를 같은 Day로 유지 */
   function applyReorder(newArr) {
-    const curKey = program[currentDayIdx] && program[currentDayIdx].key;
-    const selKey = program[selectedDayIdx] && program[selectedDayIdx].key;
+    const curKey = program[currentDayIdx]?.key, selKey = program[selectedDayIdx]?.key;
     const renum = newArr.map((d, i) => ({ ...d, day: i + 1 }));
     setProgram(renum);
     const ci = renum.findIndex((d) => d.key === curKey);
     const si = renum.findIndex((d) => d.key === selKey);
-    setCurrentDayIdx(ci >= 0 ? ci : 0);
-    setSelectedDayIdx(si >= 0 ? si : 0);
+    setCurrentDayIdx(ci >= 0 ? ci : 0); setSelectedDayIdx(si >= 0 ? si : 0);
   }
   function moveDay(from, to) {
     if (to < 0 || to >= program.length) return;
-    const a = [...program];
-    const m = a.splice(from, 1)[0];
-    a.splice(to, 0, m);
+    const a = [...program]; const m = a.splice(from, 1)[0]; a.splice(to, 0, m);
     applyReorder(a);
   }
-  function sortLight() {
-    applyReorder([...program].sort((x, y) => (INT_ORDER[x.intensity] || 2) - (INT_ORDER[y.intensity] || 2)));
-  }
-  function sortDefault() {
+  const sortLight = () => applyReorder([...program].sort((x, y) => (INT_ORDER[x.intensity]||2) - (INT_ORDER[y.intensity]||2)));
+  const sortDefault = () => {
     const num = (d) => parseInt(String(d.key).replace(/\D/g, ""), 10) || 0;
     applyReorder([...program].sort((x, y) => num(x) - num(y)));
-  }
+  };
 
-  /* CSV 내보내기 */
+  /* CSV */
   const exportProgram = () => {
     const rows = [];
     program.forEach((d) => d.exercises.forEach((e) =>
-      rows.push({ day:d.day, dayName:d.name, exercise:e.name, category:e.category, unit:e.unit, sets:e.sets, reps:e.reps, intensity:d.intensity, alternatives:e.alternatives.join(" | ") })));
+      rows.push({ day:d.day, dayName:d.name, exercise:e.name, category:e.category, unit:e.unit, sets:e.sets, reps:e.reps, intensity:d.intensity, alternatives:(e.alternatives||[]).join(" | ") })));
     downloadCSV("PT_프로그램.csv", rows);
   };
   const exportHistory = () => {
     const rows = [];
     history.forEach((s) => s.entries.forEach((en) =>
-      rows.push({ date:s.date, day:s.dayNumber, dayName:s.dayName, exercise:en.exerciseName, weight:en.weight, unit:en.unit, reps:en.reps, sets:en.sets })));
-    downloadCSV("PT_운동기록.csv", rows.length ? rows : [{ date:"", day:"", dayName:"", exercise:"", weight:"", unit:"", reps:"", sets:"" }]);
+      rows.push({ date:s.date, day:s.dayNumber, dayName:s.dayName, condition:s.condition||"normal", exercise:en.exerciseName, weight:en.weight, unit:en.unit, reps:en.reps, sets:en.sets })));
+    downloadCSV("PT_운동기록.csv", rows.length ? rows : [{ date:"", day:"", dayName:"", condition:"", exercise:"", weight:"", unit:"", reps:"", sets:"" }]);
   };
   const exportBody = () => downloadCSV("PT_체성분.csv", bodyComp);
   const exportProfile = () => downloadCSV("PT_건강프로필.csv", [{
@@ -341,285 +435,417 @@ function PTDashboard() {
     goals:profile.goals.join(" | "), findings:profile.findings.join(" | "), notes:profile.notes }]);
   const exportAll = () => { exportProgram(); exportHistory(); exportBody(); exportProfile(); };
 
-  /* CSV 불러오기 */
   function parseFile(file, onDone) {
     Papa.parse(file, { header:true, skipEmptyLines:true, complete:(res) => onDone(res.data) });
   }
-  const importBody = (file) => parseFile(file, (rows) =>
+  const importBody = (f) => parseFile(f, (rows) =>
     setBodyComp(rows.map((r) => ({ date:r.date, weight:+r.weight, skeletalMuscle:+r.skeletalMuscle, bodyFat:+r.bodyFat, bodyFatPct:+r.bodyFatPct, bmi:+r.bmi })).filter((r) => r.date)));
-  const importProfile = (file) => parseFile(file, (rows) => {
+  const importProfile = (f) => parseFile(f, (rows) => {
     const r = rows[0]; if (!r) return;
     setProfile({ name:r.name||"", gender:r.gender||"", age:+r.age||"", height:+r.height||"",
       goals:(r.goals||"").split(" | ").filter(Boolean), findings:(r.findings||"").split(" | ").filter(Boolean), notes:r.notes||"" });
   });
-  const importProgram = (file) => parseFile(file, (rows) => {
+  const importProgram = (f) => parseFile(f, (rows) => {
     const byDay = {};
     rows.forEach((r) => { const d = +r.day;
       if (!byDay[d]) byDay[d] = { day:d, key:"d"+d, name:r.dayName||("Day "+d), category:r.category||"fullbody", intensity:r.intensity||"mid", exercises:[] };
       byDay[d].exercises.push({ id:"d"+d+"e"+(byDay[d].exercises.length+1), name:r.exercise, category:r.category||"fullbody",
         unit:r.unit||"kg", sets:r.sets, reps:r.reps, alternatives:(r.alternatives||"").split(" | ").filter(Boolean) }); });
     const arr = normalizeProgram(Object.values(byDay).sort((a,b) => a.day-b.day));
-    if (arr.length) { setProgram(arr); setCurrentDayIdx(0); setSelectedDayIdx(0); }
+    if (arr.length) { setProgram(arr); setCurrentDayIdx(0); setSelectedDayIdx(0); setOpenDays([arr[0].key]); }
   });
-  const importHistory = (file) => parseFile(file, (rows) => {
+  const importHistory = (f) => parseFile(f, (rows) => {
     const byKey = {};
     rows.forEach((r) => { const key = r.date+"_"+r.day;
-      if (!byKey[key]) byKey[key] = { date:r.date, dayNumber:+r.day, dayName:r.dayName, entries:[] };
+      if (!byKey[key]) byKey[key] = { date:r.date, dayNumber:+r.day, dayName:r.dayName, condition:r.condition||"normal", entries:[] };
       byKey[key].entries.push({ exerciseName:r.exercise, weight:r.weight, unit:r.unit, reps:r.reps, sets:r.sets }); });
     setHistory(Object.values(byKey).filter((s) => s.date).reverse());
   });
 
-  /* 렌더 */
+  /* ------------------------------ 렌더 ------------------------------ */
   return (
-    <div style={{ fontFamily:T.sans, background:T.bg, color:T.ink, minHeight:"100vh" }}>
-      <div className="mx-auto" style={{ maxWidth:1080, padding:"20px 18px 60px" }}>
-        <header className="flex items-center justify-between" style={{ marginBottom:18 }}>
+    <div style={{ minHeight:"100vh" }}>
+      <div className="mx-auto page-pad" style={{ maxWidth:1080, padding:"18px 16px 92px" }}>
+        {/* 헤더 */}
+        <header className="flex items-end justify-between gap-2" style={{ marginBottom:14 }}>
           <div>
-            <div style={{ fontSize:11, letterSpacing:3, color:T.muted, textTransform:"uppercase" }}>Personal Training</div>
-            <h1 style={{ fontFamily:T.serif, fontSize:30, fontWeight:700, lineHeight:1.1, margin:"2px 0 0" }}>
-              {profile.name} <span style={{ color:T.muted, fontSize:18, fontWeight:400 }}>전용 대시보드</span>
+            <div className="label-xs">Personal Training</div>
+            <h1 className="h-disp" style={{ fontSize:26, margin:"2px 0 0", lineHeight:1.15 }}>
+              {profile.name} <span style={{ color:T.haze, fontSize:15, fontWeight:600 }}>대시보드</span>
             </h1>
           </div>
-          <div className="text-right" style={{ fontSize:12, color:T.muted }}>
+          <div className="text-right" style={{ fontSize:12, color:T.haze, fontWeight:600 }}>
             <div>{profile.gender} · {profile.age}세 · {profile.height}cm</div>
-            <div style={{ color:T.primary, fontWeight:600, marginTop:2 }}>다음 운동: Day {currentDay.day} · {currentDay.name}</div>
             {todayCondition !== "normal" && (
-              <div style={{ color:T.accent, fontWeight:700, marginTop:2 }}>{"오늘 컨디션: " + (todayCondition === "light" ? "가벼움" : "회복")}</div>
+              <div style={{ color:T.clay, fontWeight:700, marginTop:2 }}>오늘: {todayCondition === "light" ? "가벼움" : "회복"}</div>
             )}
           </div>
         </header>
 
-        <nav className="flex flex-wrap gap-2" style={{ marginBottom:22 }}>
-          {tabs.map((tb) => {
+        {/* 데스크톱 상단 내비 */}
+        <nav className="top-nav flex-wrap gap-2" style={{ marginBottom:20 }}>
+          {navItems.map((tb) => {
             const active = tab === tb.id; const Icon = tb.icon;
             return (
-              <button key={tb.id} onClick={() => setTab(tb.id)} className="flex items-center gap-2"
-                style={{ padding:"9px 14px", borderRadius:10, fontSize:13, fontWeight:600, cursor:"pointer",
-                  border:"1px solid "+(active?T.primary:T.line), background:active?T.primary:T.surface, color:active?"#fff":T.ink }}>
-                <Icon size={15} /> {tb.label}
+              <button key={tb.id} className="btn" onClick={() => setTab(tb.id)}
+                style={active ? { background:T.ink, borderColor:T.ink, color:"#fff" } : {}}>
+                <Icon size={16} /> {tb.label}
               </button>
             );
           })}
         </nav>
 
-        {tab === "dashboard" && (
-          <div className="flex flex-col gap-5">
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <StatCard label="현재 체중" value={latest.weight + " kg"} delta={(latest.weight - first.weight).toFixed(1)} unit="kg" />
-              <StatCard label="체지방률" value={latest.bodyFatPct + " %"} delta={(latest.bodyFatPct - first.bodyFatPct).toFixed(1)} unit="%p" />
-              <StatCard label="골격근량" value={latest.skeletalMuscle + " kg"} delta={(latest.skeletalMuscle - first.skeletalMuscle).toFixed(1)} unit="kg" good />
-              <StatCard label="BMI" value={"" + latest.bmi} delta={(latest.bmi - first.bmi).toFixed(1)} unit="" />
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <Panel title="추세" className="md:col-span-2">
-                <MiniLineChart data={bodyComp} height={220} series={[
-                  { key:"weight", color:T.ink, name:"체중(kg)" },
-                  { key:"bodyFatPct", color:T.accent, name:"체지방률(%)" },
-                  { key:"skeletalMuscle", color:T.primary, name:"골격근(kg)" },
-                ]} />
-              </Panel>
-              <Panel title="오늘의 목표 세션">
-                <div className="flex items-center gap-3" style={{ marginBottom:10 }}>
-                  <ExerciseIcon category={currentDay.category} />
-                  <div>
-                    <div style={{ fontFamily:T.serif, fontSize:18, fontWeight:600 }}>Day {currentDay.day}</div>
-                    <div style={{ fontSize:12, color:T.muted }}>{currentDay.name}</div>
-                  </div>
+        {/* ===== 홈 ===== */}
+        {tab === "home" && (
+          <div className="flex flex-col gap-4">
+            {/* 오늘 세션 히어로 */}
+            <div className="card" style={{ background:T.ink, border:"none", color:"#fff", padding:"20px 18px" }}>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <div className="label-xs" style={{ color:"#9DB3AA" }}>다음 세션</div>
+                  <div className="h-disp" style={{ fontSize:34, lineHeight:1.1, margin:"4px 0 2px" }}>Day {currentDay.day}</div>
+                  <div style={{ fontSize:15, fontWeight:600, color:"#D7E2DC" }}>{currentDay.name} · 운동 {currentDay.exercises.length}개</div>
                 </div>
-                <ul style={{ fontSize:12.5, color:T.muted, lineHeight:1.9, margin:0, paddingLeft:14 }}>
-                  {currentDay.exercises.map((e) => <li key={e.id}>{e.name} · {e.sets}×{e.reps}</li>)}
-                </ul>
-                <button onClick={() => { setSelectedDayIdx(currentDayIdx); setTab("log"); }} className="flex items-center justify-center gap-1"
-                  style={{ marginTop:12, width:"100%", padding:"9px", borderRadius:9, border:"none", background:T.primary, color:"#fff", fontWeight:600, fontSize:13, cursor:"pointer" }}>
-                  기록 시작 <I.chevronRight size={15} />
-                </button>
-              </Panel>
-            </div>
-            <Panel title="목표">
-              <div className="flex flex-wrap gap-2">
-                {profile.goals.map((g, i) => <span key={i} style={{ fontSize:12.5, padding:"6px 12px", borderRadius:999, background:T.primarySoft, color:T.primary, fontWeight:600 }}>{g}</span>)}
+                <span style={{ fontSize:12, fontWeight:700, color:INT[currentDay.intensity].c, background:"#fff", padding:"6px 12px", borderRadius:999 }}>
+                  {INT[currentDay.intensity].l}
+                </span>
               </div>
-            </Panel>
-          </div>
-        )}
+              <div style={{ fontSize:13, color:"#B9C8C1", margin:"12px 0 14px", lineHeight:1.7 }}>
+                {currentDay.exercises.map((e) => e.name).join(" · ")}
+              </div>
+              <button className="btn btn-primary" style={{ width:"100%", background:T.moss, borderColor:T.moss }}
+                onClick={() => { setSelectedDayIdx(currentDayIdx); setTab("log"); }}>
+                오늘 운동 기록하기
+              </button>
+            </div>
 
-        {tab === "health" && (
-          <div className="flex flex-col gap-4">
-            <Panel title="임상 소견 / 자세 평가">
-              <ul style={{ margin:0, paddingLeft:16, lineHeight:2, fontSize:13.5 }}>{profile.findings.map((f, i) => <li key={i}>{f}</li>)}</ul>
-            </Panel>
-            <Panel title="목표">
-              <ul style={{ margin:0, paddingLeft:16, lineHeight:2, fontSize:13.5 }}>{profile.goals.map((g, i) => <li key={i}>{g}</li>)}</ul>
-            </Panel>
-            <Panel title="트레이너 메모">
-              <textarea className="pt-input" rows={4} value={profile.notes} onChange={(e) => setProfile({ ...profile, notes:e.target.value })} />
-            </Panel>
-          </div>
-        )}
+            {/* 체성분 요약 */}
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <StatCard label="체중" value={latest.weight} unit="kg" delta={(latest.weight - first.weight).toFixed(1)} />
+              <StatCard label="체지방률" value={latest.bodyFatPct} unit="%" delta={(latest.bodyFatPct - first.bodyFatPct).toFixed(1)} suffix="%p" />
+              <StatCard label="골격근량" value={latest.skeletalMuscle} unit="kg" delta={(latest.skeletalMuscle - first.skeletalMuscle).toFixed(1)} good />
+              <StatCard label="BMI" value={latest.bmi} unit="" delta={(latest.bmi - first.bmi).toFixed(1)} />
+            </div>
 
-        {tab === "body" && (
-          <div className="flex flex-col gap-4">
-            <Panel title="측정 추이">
-              <MiniLineChart data={bodyComp} height={240} series={[
+            <div className="card">
+              <SectionTitle>추세</SectionTitle>
+              <MiniLineChart data={bodyComp} height={210} series={[
                 { key:"weight", color:T.ink, name:"체중(kg)" },
-                { key:"bodyFat", color:T.accent, name:"체지방량(kg)" },
-                { key:"skeletalMuscle", color:T.primary, name:"골격근(kg)" },
+                { key:"bodyFatPct", color:T.clay, name:"체지방률(%)" },
+                { key:"skeletalMuscle", color:T.moss, name:"골격근(kg)" },
               ]} />
-            </Panel>
-            <Panel title="측정 기록"><BodyCompTable data={bodyComp} onChange={setBodyComp} /></Panel>
+            </div>
+
+            <div className="card">
+              <SectionTitle>목표</SectionTitle>
+              <div className="flex flex-wrap gap-2">
+                {profile.goals.map((g, i) => (
+                  <span key={i} style={{ fontSize:13, padding:"8px 14px", borderRadius:999, background:T.mossSoft, color:T.moss, fontWeight:700 }}>{g}</span>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
+        {/* ===== 기록 ===== */}
         {tab === "log" && (
           <div className="flex flex-col gap-4">
-            <Panel title="오늘 세션 설정">
-              <ConditionControl label="오늘 컨디션" mode={todayCondition} setMode={setTodayCondition} />
-              <p style={{ fontSize:12.5, color:T.muted, margin:"12px 0 8px" }}>
-                순서상 다음은 <b>Day {currentDay.day}</b>이지만, 컨디션에 따라 다른 Day를 골라 진행해도 됩니다.
-              </p>
+            {/* 오늘 설정 */}
+            <div className="card">
+              <SectionTitle>오늘 세션</SectionTitle>
+              <div className="flex items-center gap-2 flex-wrap" style={{ marginBottom:12 }}>
+                <span style={{ fontSize:13, color:T.haze, fontWeight:700 }}>컨디션</span>
+                {[["normal","평소"],["light","가벼움"],["recovery","회복"]].map(([v, l]) => (
+                  <button key={v} className={"chip" + (todayCondition === v ? " on" : "")}
+                    style={todayCondition === v && v !== "normal" ? { background:T.clay, borderColor:T.clay } : {}}
+                    onClick={() => setTodayCondition(v)}>{l}</button>
+                ))}
+              </div>
               <div className="flex flex-wrap gap-2">
                 {program.map((d, i) => {
                   const sel = i === selectedDayIdx;
                   return (
-                    <button key={d.key} onClick={() => setSelectedDayIdx(i)}
-                      style={{ padding:"8px 12px", borderRadius:9, fontSize:12.5, fontWeight:600, cursor:"pointer", textAlign:"left",
-                        border:"1px solid "+(sel?T.primary:T.line), background:sel?T.primary:T.surface, color:sel?"#fff":T.ink }}>
-                      Day {d.day} · {d.name}{i === currentDayIdx ? " · 다음" : ""}
+                    <button key={d.key} className={"chip" + (sel ? " on" : "")} onClick={() => setSelectedDayIdx(i)}>
+                      Day {d.day} {d.name}{i === currentDayIdx ? " ·다음" : ""}
                     </button>
                   );
                 })}
               </div>
-            </Panel>
+            </div>
+
             <ConditionBanner mode={todayCondition} />
+            <RestTimer />
 
-            <Panel title={"기록 — Day " + selectedDay.day + " · " + selectedDay.name}>
-              <p style={{ fontSize:12.5, color:T.muted, marginTop:-4, marginBottom:12 }}>
-                운동명은 자동으로 채워집니다. 무게·횟수·세트만 입력 후 <b>세션 완료</b>를 누르면 기록되고 다음 Day로 진행돼요.
-              </p>
-              <div className="flex flex-col gap-2">
-                {selectedDay.exercises.map((ex) => {
-                  const v = logInputs[ex.id] || {};
-                  const set = (k, val) => setLogInputs((p) => ({ ...p, [ex.id]: { ...p[ex.id], [k]:val } }));
-                  return (
-                    <div key={ex.id} className="flex items-center gap-3" style={{ padding:"10px 12px", border:"1px solid "+T.line, borderRadius:10, background:T.surface }}>
-                      <ExerciseIcon category={ex.category} size={30} />
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontWeight:600, fontSize:13.5 }}>{ex.name}</div>
-                        <div style={{ fontSize:11.5, color:T.muted }}>목표 {ex.sets}세트 × {ex.reps}</div>
-                      </div>
-                      <input className="pt-input" style={{ width:78 }} placeholder={"무게(" + ex.unit + ")"} value={v.weight||""} onChange={(e) => set("weight", e.target.value)} />
-                      <input className="pt-input" style={{ width:64 }} placeholder="횟수" value={v.reps||""} onChange={(e) => set("reps", e.target.value)} />
-                      <input className="pt-input" style={{ width:56 }} placeholder="세트" value={v.sets||""} onChange={(e) => set("sets", e.target.value)} />
-                    </div>
-                  );
-                })}
+            {/* 진행률 */}
+            <div className="card" style={{ padding:14 }}>
+              <div className="flex items-center justify-between">
+                <span style={{ fontSize:13.5, fontWeight:700 }}>Day {selectedDay.day} · {selectedDay.name}</span>
+                <span className="h-disp" style={{ fontSize:18 }}>{doneCount}<span style={{ color:T.haze, fontSize:14 }}> / {selectedDay.exercises.length}</span></span>
               </div>
-              <button onClick={completeSession} className="flex items-center justify-center gap-2"
-                style={{ marginTop:14, width:"100%", padding:12, borderRadius:10, border:"none", background:T.primary, color:"#fff", fontWeight:700, fontSize:14, cursor:"pointer" }}>
-                <I.check size={17} /> 세션 완료 · 다음 Day로 진행
-              </button>
-            </Panel>
+              <div style={{ height:8, background:T.line, borderRadius:99, marginTop:8, overflow:"hidden" }}>
+                <div style={{ height:"100%", width:(selectedDay.exercises.length ? (doneCount/selectedDay.exercises.length)*100 : 0) + "%", background:T.moss, transition:"width .25s" }} />
+              </div>
+            </div>
 
-            <Panel title={"기록 히스토리 (" + history.length + ")"}>
-              {history.length === 0 ? <p style={{ fontSize:13, color:T.muted }}>아직 완료된 세션이 없습니다.</p> : (
+            {/* 운동 카드들 */}
+            {selectedDay.exercises.map((ex) => {
+              const v = logInputs[ex.id] || {};
+              const set = (k, val) => setLogInputs((p) => ({ ...p, [ex.id]: { ...p[ex.id], [k]:val } }));
+              const last = lastRecordFor(ex.name);
+              const done = !!v.done;
+              return (
+                <div key={ex.id} className="card" style={{ padding:16, borderColor: done ? T.moss : T.line, background: done ? "#F2F8F5" : T.card }}>
+                  <div className="flex items-center gap-3">
+                    <ExerciseIcon category={ex.category} size={34} />
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:700, fontSize:16, lineHeight:1.3 }}>{ex.name}</div>
+                      <div style={{ fontSize:12.5, color:T.haze, fontWeight:600 }}>목표 {ex.sets}세트 × {ex.reps}</div>
+                    </div>
+                    <button onClick={() => set("done", !done)} aria-label="완료"
+                      style={{ width:46, height:46, borderRadius:14, cursor:"pointer", flexShrink:0,
+                        border:"2px solid " + (done ? T.moss : T.line),
+                        background: done ? T.moss : "#fff", color: done ? "#fff" : T.line,
+                        display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      <I.check size={22} />
+                    </button>
+                  </div>
+
+                  {last && (
+                    <div className="flex items-center justify-between gap-2" style={{ marginTop:10, padding:"8px 12px", background:T.paper, borderRadius:10 }}>
+                      <span style={{ fontSize:12.5, color:T.haze, fontWeight:600 }}>
+                        지난 기록 · {last.weight ? last.weight + (last.unit||"") + " × " : ""}{last.reps}{last.sets ? " × " + last.sets + "세트" : ""} <span style={{ opacity:.7 }}>({String(last.date).slice(5)})</span>
+                      </span>
+                      <button className="btn btn-sm btn-soft" onClick={() => setLogInputs((p) => ({ ...p, [ex.id]: { ...p[ex.id], weight:String(last.weight||""), reps:String(last.reps||""), sets:String(last.sets||"") } }))}>
+                        <I.copy size={13} /> 동일
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2" style={{ marginTop:10, gridTemplateColumns:"1.2fr 1fr 1fr" }}>
+                    <div>
+                      <div style={{ fontSize:11.5, fontWeight:700, color:T.haze, marginBottom:4 }}>무게({ex.unit})</div>
+                      <input className="pt-input" inputMode="decimal" placeholder={last && last.weight ? String(last.weight) : "0"} value={v.weight||""} onChange={(e) => set("weight", e.target.value)} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize:11.5, fontWeight:700, color:T.haze, marginBottom:4 }}>횟수</div>
+                      <input className="pt-input" inputMode="numeric" placeholder={String(ex.reps)} value={v.reps||""} onChange={(e) => set("reps", e.target.value)} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize:11.5, fontWeight:700, color:T.haze, marginBottom:4 }}>세트</div>
+                      <input className="pt-input" inputMode="numeric" placeholder={String(ex.sets)} value={v.sets||""} onChange={(e) => set("sets", e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            <button className="btn btn-primary" style={{ width:"100%", minHeight:52, fontSize:15.5 }} onClick={completeSession}>
+              <I.check size={18} /> 세션 완료 · 다음 Day로
+            </button>
+
+            {/* 히스토리 */}
+            <div className="card">
+              <SectionTitle>기록 히스토리 ({history.length})</SectionTitle>
+              {history.length === 0 ? (
+                <p style={{ fontSize:13.5, color:T.haze, margin:0 }}>아직 완료된 세션이 없습니다. 위에서 첫 세션을 기록해 보세요.</p>
+              ) : (
                 <div className="flex flex-col gap-2">
                   {history.map((s, i) => (
-                    <div key={i} style={{ padding:"10px 12px", border:"1px solid "+T.line, borderRadius:10 }}>
+                    <div key={i} style={{ padding:"12px 14px", border:"1px solid "+T.line, borderRadius:12 }}>
                       <div className="flex items-center justify-between" style={{ marginBottom:6 }}>
                         <span className="flex items-center gap-2">
-                          <span style={{ fontWeight:600, fontSize:13 }}>Day {s.dayNumber} · {s.dayName}</span>
+                          <span style={{ fontWeight:700, fontSize:13.5 }}>Day {s.dayNumber} · {s.dayName}</span>
                           {s.condition && s.condition !== "normal" && (
-                            <span style={{ fontSize:10.5, fontWeight:700, color:T.accent, background:T.accentSoft, padding:"2px 8px", borderRadius:999 }}>
+                            <span style={{ fontSize:10.5, fontWeight:700, color:T.clay, background:T.claySoft, padding:"2px 8px", borderRadius:999 }}>
                               {s.condition === "light" ? "가벼움" : "회복"}
                             </span>
                           )}
                         </span>
-                        <span style={{ fontSize:12, color:T.muted }}>{s.date}</span>
+                        <span style={{ fontSize:12, color:T.haze, fontWeight:600 }}>{s.date}</span>
                       </div>
-                      <div style={{ fontSize:12, color:T.muted, lineHeight:1.8 }}>
-                        {s.entries.map((en, j) => <span key={j}>{en.exerciseName} {en.weight ? (en.weight + (en.unit||"")) : ""} {en.reps}×{en.sets}{j < s.entries.length-1 ? " · " : ""}</span>)}
+                      <div style={{ fontSize:12.5, color:T.haze, lineHeight:1.9 }}>
+                        {s.entries.map((en, j) => <span key={j}>{en.exerciseName} {en.weight ? (en.weight + (en.unit||"")) : ""} {en.reps}×{en.sets}{j < s.entries.length-1 ? "  ·  " : ""}</span>)}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-            </Panel>
+            </div>
           </div>
         )}
 
+        {/* ===== 프로그램 ===== */}
         {tab === "program" && (
           <div className="flex flex-col gap-4">
-            <Panel title="순서 · 강도 조절">
+            <div className="card">
+              <SectionTitle>순서 · 강도</SectionTitle>
               <div className="flex flex-wrap gap-2 items-center">
-                <button onClick={sortLight} className="flex items-center gap-1"
-                  style={{ padding:"8px 12px", borderRadius:9, border:"1px solid "+T.primary, background:T.primarySoft, color:T.primary, fontWeight:600, fontSize:12.5, cursor:"pointer" }}>
-                  <I.sort size={14} /> 가벼운 순서로 정렬
-                </button>
-                <button onClick={sortDefault}
-                  style={{ padding:"8px 12px", borderRadius:9, border:"1px solid "+T.line, background:T.surface, color:T.ink, fontWeight:600, fontSize:12.5, cursor:"pointer" }}>
-                  기본 순서로
-                </button>
-                <span style={{ fontSize:11.5, color:T.muted }}>강도 뱃지를 눌러 상/중/하를 바꾸거나 ▲▼로 순서를 옮기세요. 컨디션은 운동기록 탭에서 그날그날 설정합니다.</span>
+                <button className="btn btn-soft" onClick={sortLight}><I.sort size={15} /> 가벼운 순서로 정렬</button>
+                <button className="btn" onClick={sortDefault}>기본 순서로</button>
               </div>
-            </Panel>
+              <p style={{ fontSize:12.5, color:T.haze, margin:"10px 0 0" }}>
+                카드를 눌러 펼치고, <b>편집</b>으로 세트·횟수 수정과 운동 추가·삭제가 가능합니다. 강도 뱃지를 누르면 상/중/하가 바뀝니다.
+              </p>
+            </div>
 
-            {program.map((d, di) => (
-              <Panel key={d.key} className="flex-wrap"
-                title={"Day " + d.day + " · " + d.name}
-                badge={di === currentDayIdx ? "다음 세션" : null}
-                actions={
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => cycleIntensity(d.key)} title="탭하여 강도 변경"
-                      style={{ fontSize:11, fontWeight:700, color:INT[d.intensity].c, background:INT[d.intensity].bg, border:"none", borderRadius:999, padding:"5px 11px", cursor:"pointer" }}>
+            {program.map((d, di) => {
+              const open = (openDays || []).includes(d.key);
+              const editing = editKey === d.key;
+              return (
+                <div key={d.key} className="card" style={{ padding:0, overflow:"hidden", borderColor: di === currentDayIdx ? T.moss : T.line }}>
+                  {/* 헤더 */}
+                  <div className="flex items-center gap-2" style={{ padding:"14px 16px", cursor:"pointer" }}
+                    onClick={() => setOpenDays((p) => open ? (p||[]).filter((k) => k !== d.key) : [ ...(p||[]), d.key ])}>
+                    <span className="h-disp" style={{ fontSize:20, width:64, flexShrink:0 }}>D{d.day}</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      {editing ? (
+                        <input className="pt-input" value={d.name} onClick={(e) => e.stopPropagation()} onChange={(e) => renameDay(d.key, e.target.value)} />
+                      ) : (
+                        <div style={{ fontWeight:700, fontSize:15 }}>{d.name}
+                          {di === currentDayIdx && <span style={{ fontSize:10.5, fontWeight:700, color:T.moss, background:T.mossSoft, padding:"2px 8px", borderRadius:999, marginLeft:8, verticalAlign:"middle" }}>다음</span>}
+                        </div>
+                      )}
+                      <div style={{ fontSize:12, color:T.haze, fontWeight:600 }}>운동 {d.exercises.length}개</div>
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); cycleIntensity(d.key); }}
+                      style={{ fontSize:11.5, fontWeight:700, color:INT[d.intensity].c, background:INT[d.intensity].bg, border:"none", borderRadius:999, padding:"6px 12px", cursor:"pointer", flexShrink:0 }}>
                       {INT[d.intensity].l}
                     </button>
-                    <button onClick={() => moveDay(di, di-1)} disabled={di===0}
-                      style={{ width:28, height:28, borderRadius:8, border:"1px solid "+T.line, background:T.surface, cursor:di===0?"default":"pointer", color:di===0?T.line:T.muted, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                      <I.up size={14} />
-                    </button>
-                    <button onClick={() => moveDay(di, di+1)} disabled={di===program.length-1}
-                      style={{ width:28, height:28, borderRadius:8, border:"1px solid "+T.line, background:T.surface, cursor:di===program.length-1?"default":"pointer", color:di===program.length-1?T.line:T.muted, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                      <I.down size={14} />
-                    </button>
-                  </div>
-                }>
-                <div className="flex flex-col gap-2">
-                  {d.exercises.map((ex) => (
-                    <div key={ex.id} className="flex items-center gap-3 flex-wrap" style={{ padding:"10px 12px", border:"1px solid "+T.line, borderRadius:10 }}>
-                      <ExerciseIcon category={ex.category} size={30} />
-                      <div style={{ flex:1, minWidth:140 }}>
-                        <div style={{ fontWeight:600, fontSize:13.5 }}>{ex.name}</div>
-                        <div style={{ fontSize:11.5, color:T.muted }}>{ex.sets}세트 × {ex.reps}</div>
-                      </div>
-                      <button onClick={() => toggleUnit(di, ex.id)} style={{ padding:"5px 10px", borderRadius:8, border:"1px solid "+T.line, background:T.surface, fontSize:12, fontWeight:600, cursor:"pointer", color:T.ink }}>
-                        {ex.unit.toUpperCase()}
-                      </button>
-                      <div className="flex items-center gap-1" style={{ color:T.muted }}>
-                        <I.repeat size={14} />
-                        <select className="pt-input" style={{ width:150 }} value="" onChange={(e) => { if (e.target.value) substitute(di, ex.id, e.target.value); }}>
-                          <option value="">대체 운동…</option>
-                          {ex.alternatives.map((a) => <option key={a} value={a}>{a}</option>)}
-                        </select>
-                      </div>
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <IconBtn onClick={() => moveDay(di, di-1)} disabled={di===0}><I.up size={15} /></IconBtn>
+                      <IconBtn onClick={() => moveDay(di, di+1)} disabled={di===program.length-1}><I.down size={15} /></IconBtn>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* 본문 */}
+                  {open && (
+                    <div style={{ borderTop:"1px solid "+T.line, padding:"14px 16px" }}>
+                      <div className="flex justify-between items-center" style={{ marginBottom:10 }}>
+                        <span className="label-xs">운동 목록</span>
+                        <button className="btn btn-sm" style={ editing ? { background:T.ink, color:"#fff", borderColor:T.ink } : {} }
+                          onClick={() => setEditKey(editing ? null : d.key)}>
+                          {editing ? <React.Fragment><I.check size={14} /> 완료</React.Fragment> : <React.Fragment><I.edit size={14} /> 편집</React.Fragment>}
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        {d.exercises.map((ex) => {
+                          const last = lastRecordFor(ex.name);
+                          return (
+                            <div key={ex.id} style={{ padding:"12px", border:"1px solid "+T.line, borderRadius:12 }}>
+                              <div className="flex items-center gap-3">
+                                <ExerciseIcon category={ex.category} size={30} />
+                                <div style={{ flex:1, minWidth:0 }}>
+                                  {editing ? (
+                                    <input className="pt-input" value={ex.name} onChange={(e) => patchExercise(d.key, ex.id, { name:e.target.value })} />
+                                  ) : (
+                                    <React.Fragment>
+                                      <div style={{ fontWeight:700, fontSize:14.5 }}>{ex.name}</div>
+                                      <div style={{ fontSize:12, color:T.haze, fontWeight:600 }}>
+                                        {ex.sets}세트 × {ex.reps}{last && last.weight ? <span> · 최근 {last.weight}{last.unit||""}</span> : null}
+                                      </div>
+                                    </React.Fragment>
+                                  )}
+                                </div>
+                                {!editing && (
+                                  <button className="btn btn-sm" onClick={() => toggleUnit(d.key, ex.id)}>{(ex.unit||"kg").toUpperCase()}</button>
+                                )}
+                                {editing && (
+                                  <IconBtn danger onClick={() => deleteExercise(d.key, ex.id)}><I.trash size={15} /></IconBtn>
+                                )}
+                              </div>
+
+                              {editing ? (
+                                <div className="grid gap-2" style={{ marginTop:10, gridTemplateColumns:"1fr 1fr 1.2fr" }}>
+                                  <div>
+                                    <div style={{ fontSize:11, fontWeight:700, color:T.haze, marginBottom:4 }}>세트</div>
+                                    <input className="pt-input" inputMode="numeric" value={ex.sets} onChange={(e) => patchExercise(d.key, ex.id, { sets:e.target.value })} />
+                                  </div>
+                                  <div>
+                                    <div style={{ fontSize:11, fontWeight:700, color:T.haze, marginBottom:4 }}>횟수</div>
+                                    <input className="pt-input" value={ex.reps} onChange={(e) => patchExercise(d.key, ex.id, { reps:e.target.value })} />
+                                  </div>
+                                  <div>
+                                    <div style={{ fontSize:11, fontWeight:700, color:T.haze, marginBottom:4 }}>부위</div>
+                                    <select className="pt-input" value={ex.category} onChange={(e) => patchExercise(d.key, ex.id, { category:e.target.value })}>
+                                      {CATS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                                    </select>
+                                  </div>
+                                </div>
+                              ) : (
+                                (ex.alternatives||[]).length > 0 && (
+                                  <div className="flex items-center gap-2" style={{ marginTop:10, color:T.haze }}>
+                                    <I.repeat size={14} />
+                                    <select className="pt-input" style={{ maxWidth:220, minHeight:38, padding:"7px 10px", fontSize:13.5 }} value=""
+                                      onChange={(e) => { if (e.target.value) substitute(d.key, ex.id, e.target.value); }}>
+                                      <option value="">대체 운동으로 교체…</option>
+                                      {ex.alternatives.map((a) => <option key={a} value={a}>{a}</option>)}
+                                    </select>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {editing && <AddExerciseRow onAdd={(ex) => addExercise(d.key, ex)} />}
+                    </div>
+                  )}
                 </div>
-              </Panel>
-            ))}
+              );
+            })}
           </div>
         )}
 
+        {/* ===== 체성분 ===== */}
+        {tab === "body" && (
+          <div className="flex flex-col gap-4">
+            <div className="card">
+              <SectionTitle>측정 추이</SectionTitle>
+              <MiniLineChart data={bodyComp} height={230} series={[
+                { key:"weight", color:T.ink, name:"체중(kg)" },
+                { key:"bodyFat", color:T.clay, name:"체지방량(kg)" },
+                { key:"skeletalMuscle", color:T.moss, name:"골격근(kg)" },
+              ]} />
+            </div>
+            <div className="card">
+              <SectionTitle>측정 기록</SectionTitle>
+              <BodyCompTable data={bodyComp} onChange={setBodyComp} />
+            </div>
+          </div>
+        )}
+
+        {/* ===== 건강 ===== */}
+        {tab === "health" && (
+          <div className="flex flex-col gap-4">
+            <div className="card">
+              <SectionTitle>임상 소견 / 자세 평가</SectionTitle>
+              <ul style={{ margin:0, paddingLeft:18, lineHeight:2, fontSize:14 }}>{profile.findings.map((f, i) => <li key={i}>{f}</li>)}</ul>
+            </div>
+            <div className="card">
+              <SectionTitle>목표</SectionTitle>
+              <ul style={{ margin:0, paddingLeft:18, lineHeight:2, fontSize:14 }}>{profile.goals.map((g, i) => <li key={i}>{g}</li>)}</ul>
+            </div>
+            <div className="card">
+              <SectionTitle>트레이너 메모</SectionTitle>
+              <textarea className="pt-input" rows={4} value={profile.notes} onChange={(e) => setProfile({ ...profile, notes:e.target.value })} />
+            </div>
+          </div>
+        )}
+
+        {/* ===== 백업 ===== */}
         {tab === "backup" && (
           <div className="flex flex-col gap-4">
-            <Panel title="전체 백업">
-              <p style={{ fontSize:12.5, color:T.muted, marginTop:-4, marginBottom:12 }}>
-                4종 데이터를 각각 CSV로 내보내고 불러올 수 있습니다. 이 페이지는 브라우저에 자동 저장되며, 기기/브라우저를 옮길 때는 CSV로 백업하세요.
+            <div className="card">
+              <SectionTitle>전체 백업</SectionTitle>
+              <p style={{ fontSize:13, color:T.haze, margin:"0 0 12px" }}>
+                데이터는 이 브라우저에 자동 저장됩니다. 기기를 옮기거나 보관할 때 CSV로 내보내고, 새 기기에서 불러오세요.
               </p>
-              <button onClick={exportAll} className="flex items-center justify-center gap-2"
-                style={{ width:"100%", padding:11, borderRadius:10, border:"none", background:T.ink, color:"#fff", fontWeight:700, fontSize:13.5, cursor:"pointer" }}>
+              <button className="btn" style={{ width:"100%", background:T.ink, borderColor:T.ink, color:"#fff", fontWeight:700 }} onClick={exportAll}>
                 <I.download size={16} /> 4개 파일 한 번에 내보내기
               </button>
-            </Panel>
+            </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <BackupCard title="운동 프로그램" onExport={exportProgram} onImport={importProgram} />
               <BackupCard title="운동 기록" onExport={exportHistory} onImport={importHistory} />
@@ -629,31 +855,39 @@ function PTDashboard() {
           </div>
         )}
 
-        <footer style={{ marginTop:28, fontSize:11, color:T.muted, textAlign:"center" }}>
-          이서린 PT 대시보드 · 데이터는 백업 탭에서 CSV로 내보내기/불러오기 가능
+        <footer style={{ marginTop:26, fontSize:11.5, color:T.haze, textAlign:"center", fontWeight:600 }}>
+          이서린 PT 대시보드
         </footer>
       </div>
+
+      {/* 모바일 하단 내비 */}
+      <nav className="bottom-nav">
+        {navItems.map((tb) => {
+          const Icon = tb.icon;
+          return (
+            <button key={tb.id} className={tab === tb.id ? "on" : ""} onClick={() => { setTab(tb.id); window.scrollTo(0, 0); }}>
+              <Icon size={20} /> {tb.label}
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }
 
 /* ----------------------------- 하위 컴포넌트 ----------------------------- */
-function ConditionControl({ mode, setMode, label }) {
-  const opts = [["normal","평소"],["light","가벼움"],["recovery","회복"]];
+function SectionTitle({ children }) {
+  return <h2 style={{ fontSize:15.5, fontWeight:700, margin:"0 0 12px" }}>{children}</h2>;
+}
+
+function IconBtn({ onClick, disabled, danger, children }) {
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <span style={{ fontSize:12.5, color:T.muted, fontWeight:600 }}>{label || "컨디션"}</span>
-      {opts.map(([v, l]) => {
-        const on = mode === v;
-        return (
-          <button key={v} onClick={() => setMode(v)}
-            style={{ padding:"7px 13px", borderRadius:999, fontSize:12.5, fontWeight:600, cursor:"pointer",
-              border:"1px solid "+(on?T.accent:T.line), background:on?T.accentSoft:T.surface, color:on?T.accent:T.ink }}>
-            {l}
-          </button>
-        );
-      })}
-    </div>
+    <button onClick={onClick} disabled={disabled}
+      style={{ width:40, height:40, borderRadius:10, border:"1.5px solid "+(danger ? T.claySoft : T.line),
+        background: danger ? T.claySoft : "#fff", color: disabled ? T.line : (danger ? T.clay : T.haze),
+        cursor: disabled ? "default" : "pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+      {children}
+    </button>
   );
 }
 
@@ -662,53 +896,62 @@ function ConditionBanner({ mode }) {
   const data = mode === "light"
     ? { title:"가벼운 날 (생리 등)", tips:[
         "중량을 평소의 70–80%로 낮추고 세트수는 1세트 줄이기",
-        "고중량 컴파운드(데드리프트·백스쿼트)는 머신·힙 스러스트로 대체하거나 가동범위 축소",
+        "고중량 컴파운드(데드리프트·스쿼트)는 머신·힙 스러스트로 대체하거나 가동범위 축소",
         "강한 코어 압박 동작은 줄이고, 걷기·사이클 등 저강도 유산소와 모빌리티 우선",
-        "프로그램 탭의 ‘가벼운 순서로 정렬’로 강도 낮은 Day부터 진행",
       ]}
     : { title:"회복 · 디로드", tips:[
         "중량을 평소의 50–60%로 디로드, 세트수 축소·폼 위주",
-        "통증·피로 부위 운동은 대체 운동으로 회피",
+        "통증·피로 부위는 대체 운동으로 회피",
         "수면·영양·스트레칭 비중을 늘려 회복에 집중",
       ]};
   return (
-    <div style={{ border:"1px solid "+T.accent, background:T.accentSoft, borderRadius:12, padding:"12px 14px" }}>
-      <div style={{ fontWeight:700, fontSize:13, color:T.accent, marginBottom:6 }}>{data.title}</div>
-      <ul style={{ margin:0, paddingLeft:16, fontSize:12.5, color:T.ink, lineHeight:1.8 }}>
+    <div style={{ border:"1.5px solid "+T.clay, background:T.claySoft, borderRadius:14, padding:"13px 15px" }}>
+      <div style={{ fontWeight:700, fontSize:13.5, color:T.clay, marginBottom:6 }}>{data.title}</div>
+      <ul style={{ margin:0, paddingLeft:17, fontSize:13, lineHeight:1.8 }}>
         {data.tips.map((t, i) => <li key={i}>{t}</li>)}
       </ul>
     </div>
   );
 }
 
-function Panel({ title, badge, actions, children, className }) {
-  return (
-    <section className={className || ""} style={{ background:T.surface, border:"1px solid "+T.line, borderRadius:14, padding:16 }}>
-      <div className="flex items-center justify-between flex-wrap gap-2" style={{ marginBottom:12 }}>
-        <h2 style={{ fontFamily:T.serif, fontSize:16, fontWeight:600, margin:0 }}>{title}</h2>
-        {(actions || badge) && (
-          <div className="flex items-center gap-2">
-            {actions}
-            {badge && <span style={{ fontSize:11, fontWeight:700, color:T.accent, background:T.accentSoft, padding:"3px 9px", borderRadius:999 }}>{badge}</span>}
-          </div>
-        )}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function StatCard({ label, value, delta, unit, good }) {
+function StatCard({ label, value, unit, delta, suffix, good }) {
   const num = parseFloat(delta);
   const up = num > 0;
   const positive = good ? up : !up;
-  const color = num === 0 ? T.muted : positive ? T.primary : T.accent;
+  const color = isNaN(num) || num === 0 ? T.haze : positive ? T.moss : T.clay;
   return (
-    <div style={{ background:T.surface, border:"1px solid "+T.line, borderRadius:14, padding:14 }}>
-      <div style={{ fontSize:11.5, color:T.muted, marginBottom:4 }}>{label}</div>
-      <div style={{ fontFamily:T.serif, fontSize:24, fontWeight:700, lineHeight:1 }}>{value}</div>
-      <div style={{ fontSize:11.5, color, marginTop:5, fontWeight:600 }}>
-        {isNaN(num) || num === 0 ? "변화 없음" : ((up ? "▲ " : "▼ ") + Math.abs(num) + " " + unit + " (시작 대비)")}
+    <div className="card" style={{ padding:14 }}>
+      <div style={{ fontSize:12, color:T.haze, fontWeight:700, marginBottom:4 }}>{label}</div>
+      <div className="h-disp" style={{ fontSize:26, lineHeight:1 }}>
+        {value}<span style={{ fontSize:13, color:T.haze, fontWeight:700, marginLeft:2 }}>{unit}</span>
+      </div>
+      <div style={{ fontSize:11.5, color, marginTop:6, fontWeight:700 }}>
+        {isNaN(num) || num === 0 ? "변화 없음" : ((up ? "▲ " : "▼ ") + Math.abs(num) + " " + (suffix || unit))}
+      </div>
+    </div>
+  );
+}
+
+function AddExerciseRow({ onAdd }) {
+  const [f, setF] = useState({ name:"", category:"fullbody", sets:"3", reps:"15" });
+  function submit() {
+    if (!f.name.trim()) return;
+    onAdd({ name:f.name.trim(), category:f.category, sets:f.sets || "3", reps:f.reps || "15" });
+    setF({ name:"", category:"fullbody", sets:"3", reps:"15" });
+  }
+  return (
+    <div style={{ marginTop:12, padding:12, border:"1.5px dashed "+T.line, borderRadius:12 }}>
+      <div style={{ fontSize:12, fontWeight:700, color:T.haze, marginBottom:8 }}>운동 추가</div>
+      <div className="flex flex-col gap-2">
+        <input className="pt-input" placeholder="운동 이름 (예: 레그컬)" value={f.name} onChange={(e) => setF({ ...f, name:e.target.value })} />
+        <div className="grid gap-2" style={{ gridTemplateColumns:"1.2fr 1fr 1fr auto" }}>
+          <select className="pt-input" value={f.category} onChange={(e) => setF({ ...f, category:e.target.value })}>
+            {CATS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <input className="pt-input" inputMode="numeric" placeholder="세트" value={f.sets} onChange={(e) => setF({ ...f, sets:e.target.value })} />
+          <input className="pt-input" placeholder="횟수" value={f.reps} onChange={(e) => setF({ ...f, reps:e.target.value })} />
+          <button className="btn btn-primary" style={{ minHeight:44 }} onClick={submit}><I.plus size={16} /></button>
+        </div>
       </div>
     </div>
   );
@@ -726,30 +969,30 @@ function BodyCompTable({ data, onChange }) {
   const remove = (i) => onChange(data.filter((_, idx) => idx !== i));
   return (
     <div style={{ overflowX:"auto" }}>
-      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12.5 }}>
+      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13, minWidth:560 }}>
         <thead>
-          <tr style={{ color:T.muted, textAlign:"left" }}>
-            {cols.map(([, l]) => <th key={l} style={{ padding:"6px 8px", borderBottom:"1px solid "+T.line }}>{l}</th>)}
-            <th style={{ borderBottom:"1px solid "+T.line }} />
+          <tr style={{ color:T.haze, textAlign:"left" }}>
+            {cols.map(([, l]) => <th key={l} style={{ padding:"8px", borderBottom:"1.5px solid "+T.line, fontWeight:700 }}>{l}</th>)}
+            <th style={{ borderBottom:"1.5px solid "+T.line }} />
           </tr>
         </thead>
         <tbody>
           {data.map((r, i) => (
             <tr key={i}>
-              {cols.map(([k]) => <td key={k} style={{ padding:"7px 8px", borderBottom:"1px solid "+T.line }}>{r[k]}</td>)}
-              <td style={{ padding:"7px 8px", borderBottom:"1px solid "+T.line, textAlign:"right" }}>
-                <button onClick={() => remove(i)} style={{ border:"none", background:"none", cursor:"pointer", color:T.accent }}><I.trash size={15} /></button>
+              {cols.map(([k]) => <td key={k} style={{ padding:"9px 8px", borderBottom:"1px solid "+T.line, fontWeight: k==="date" ? 600 : 400 }}>{r[k]}</td>)}
+              <td style={{ padding:"9px 8px", borderBottom:"1px solid "+T.line, textAlign:"right" }}>
+                <button onClick={() => remove(i)} style={{ border:"none", background:"none", cursor:"pointer", color:T.clay }}><I.trash size={16} /></button>
               </td>
             </tr>
           ))}
           <tr>
             {cols.map(([k]) => (
-              <td key={k} style={{ padding:"6px 6px" }}>
-                <input className="pt-input" type={k === "date" ? "date" : "number"} value={form[k]} onChange={(e) => setForm({ ...form, [k]:e.target.value })} />
+              <td key={k} style={{ padding:"8px 4px" }}>
+                <input className="pt-input" style={{ minHeight:40, fontSize:13 }} type={k === "date" ? "date" : "number"} value={form[k]} onChange={(e) => setForm({ ...form, [k]:e.target.value })} />
               </td>
             ))}
             <td style={{ textAlign:"right" }}>
-              <button onClick={add} style={{ border:"none", background:T.primary, color:"#fff", borderRadius:8, padding:"7px 9px", cursor:"pointer" }}><I.plus size={15} /></button>
+              <button onClick={add} style={{ border:"none", background:T.moss, color:"#fff", borderRadius:10, padding:"9px 11px", cursor:"pointer" }}><I.plus size={16} /></button>
             </td>
           </tr>
         </tbody>
@@ -761,17 +1004,11 @@ function BodyCompTable({ data, onChange }) {
 function BackupCard({ title, onExport, onImport }) {
   const ref = useRef(null);
   return (
-    <div style={{ background:T.surface, border:"1px solid "+T.line, borderRadius:12, padding:14 }}>
-      <div style={{ fontWeight:600, fontSize:13.5, marginBottom:10 }}>{title}</div>
+    <div className="card" style={{ padding:14 }}>
+      <div style={{ fontWeight:700, fontSize:14, marginBottom:10 }}>{title}</div>
       <div className="flex gap-2">
-        <button onClick={onExport} className="flex items-center justify-center gap-1"
-          style={{ flex:1, padding:"8px", borderRadius:9, border:"1px solid "+T.primary, background:T.primarySoft, color:T.primary, fontWeight:600, fontSize:12.5, cursor:"pointer" }}>
-          <I.download size={14} /> 내보내기
-        </button>
-        <button onClick={() => ref.current && ref.current.click()} className="flex items-center justify-center gap-1"
-          style={{ flex:1, padding:"8px", borderRadius:9, border:"1px solid "+T.line, background:T.surface, color:T.ink, fontWeight:600, fontSize:12.5, cursor:"pointer" }}>
-          <I.upload size={14} /> 불러오기
-        </button>
+        <button className="btn btn-soft" style={{ flex:1 }} onClick={onExport}><I.download size={15} /> 내보내기</button>
+        <button className="btn" style={{ flex:1 }} onClick={() => ref.current && ref.current.click()}><I.upload size={15} /> 불러오기</button>
         <input ref={ref} type="file" accept=".csv" style={{ display:"none" }}
           onChange={(e) => { const f = e.target.files && e.target.files[0]; if (f) onImport(f); e.target.value = ""; }} />
       </div>
